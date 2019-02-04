@@ -4,6 +4,8 @@ set(PROJECT_NAME "SOIL")
 project(${PROJECT_NAME} C)
 set(CMAKE_BUILD_TYPE Release)
 
+option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
+
 include(build/conanbuildinfo.cmake)
 conan_basic_setup()
 
@@ -20,8 +22,4 @@ include_directories(src)
 file(GLOB_RECURSE SOURCES_LIST "src/*.c")
 
 add_library(${PROJECT_NAME} ${SOURCES_LIST})
-
-# Reserved if someone wants to build it dynamically
-# add_library(${PROJECT_NAME} SHARED ${SOURCES_LIST})
-
-# target_link_libraries(${PROJECT_NAME} ${OPENGL_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${CONAN_LIBS})
