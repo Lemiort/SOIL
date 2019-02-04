@@ -16,26 +16,12 @@
 
 #define SOIL_CHECK_FOR_GL_ERRORS 0
 
-#ifdef WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <wingdi.h>
-#include <GL/gl.h>
-#elif defined(__APPLE__) || defined(__APPLE_CC__)
-/*	I can't test this Apple stuff!	*/
-#include <OpenGL/gl.h>
-#include <Carbon/Carbon.h>
-#define APIENTRY
-#else
-#include <GL/gl.h>
-#include <GL/glx.h>
-#endif
+#include <GL/glew.h>
 
 #include "SOIL.h"
 #include "image_DXT.h"
 #include "image_helper.h"
 #include "stb_image_aug.h"
-
 
 #include <stdlib.h>
 #include <string.h>
@@ -80,7 +66,7 @@ int query_DXT_capability(void);
 #define SOIL_RGBA_S3TC_DXT1 0x83F1
 #define SOIL_RGBA_S3TC_DXT3 0x83F2
 #define SOIL_RGBA_S3TC_DXT5 0x83F3
-typedef void(APIENTRY *P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)(
+typedef void (*P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)(
     GLenum target, GLint level, GLenum internalformat, GLsizei width,
     GLsizei height, GLint border, GLsizei imageSize, const GLvoid *data);
 P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC soilGlCompressedTexImage2D = NULL;
@@ -812,7 +798,6 @@ unsigned int SOIL_internal_create_OGL_texture(
          * cubemaps!)	*/
         flags &= ~SOIL_FLAG_TEXTURE_RECTANGLE;
       }
-
     } else {
       /*	can't do it, and that is a breakable offense (uv coords use
        * pixels instead of [0,1]!)	*/
@@ -1595,32 +1580,8 @@ int query_DXT_capability(void) {
       has_DXT_capability = SOIL_CAPABILITY_NONE;
     } else {
       /*	and find the address of the extension function	*/
-      P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC ext_addr = NULL;
-#ifdef WIN32
-      ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)wglGetProcAddress(
-          "glCompressedTexImage2DARB");
-#elif defined(__APPLE__) || defined(__APPLE_CC__)
-      /*	I can't test this Apple stuff!	*/
-      CFBundleRef bundle;
-      CFURLRef bundleURL = CFURLCreateWithFileSystemPath(
-          kCFAllocatorDefault,
-          CFSTR("/System/Library/Frameworks/OpenGL.framework"),
-          kCFURLPOSIXPathStyle, true);
-      CFStringRef extensionName = CFStringCreateWithCString(
-          kCFAllocatorDefault, "glCompressedTexImage2DARB",
-          kCFStringEncodingASCII);
-      bundle = CFBundleCreate(kCFAllocatorDefault, bundleURL);
-      assert(bundle != NULL);
-      ext_addr =
-          (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)CFBundleGetFunctionPointerForName(
-              bundle, extensionName);
-      CFRelease(bundleURL);
-      CFRelease(extensionName);
-      CFRelease(bundle);
-#else
-      ext_addr = (P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)glXGetProcAddressARB(
-          (const GLubyte *)"glCompressedTexImage2DARB");
-#endif
+      P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC ext_addr =
+          glGetProcAddressREGAL("glCompressedTexImage2DARB");
       /*	Flag it so no checks needed later	*/
       if (NULL == ext_addr) {
         /*	hmm, not good!!  This should not happen, but does on my

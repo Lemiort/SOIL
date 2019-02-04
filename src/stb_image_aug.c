@@ -76,15 +76,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-
-#ifndef _MSC_VER
-#ifdef __cplusplus
-#define __forceinline inline
-#else
-#define __forceinline
-#endif
-#endif
-
 // implementation:
 typedef unsigned char uint8;
 typedef unsigned short uint16;
@@ -362,7 +353,7 @@ static void start_mem(stbi *s, uint8 const *buffer, int len) {
   s->img_buffer_end = (uint8 *)buffer + len;
 }
 
-__forceinline static int get8(stbi *s) {
+inline static int get8(stbi *s) {
 #ifndef STBI_NO_STDIO
   if (s->img_file) {
     int c = fgetc(s->img_file);
@@ -374,7 +365,7 @@ __forceinline static int get8(stbi *s) {
   return 0;
 }
 
-__forceinline static int at_eof(stbi *s) {
+inline static int at_eof(stbi *s) {
 #ifndef STBI_NO_STDIO
   if (s->img_file)
     return feof(s->img_file);
@@ -382,7 +373,7 @@ __forceinline static int at_eof(stbi *s) {
   return s->img_buffer >= s->img_buffer_end;
 }
 
-__forceinline static uint8 get8u(stbi *s) { return (uint8)get8(s); }
+inline static uint8 get8u(stbi *s) { return (uint8)get8(s); }
 
 static void skip(stbi *s, int n) {
 #ifndef STBI_NO_STDIO
@@ -479,8 +470,7 @@ static unsigned char *convert_format(unsigned char *data, int img_n,
       CASE(2, 4) dest[0] = dest[1] = dest[2] = src[0], dest[3] = src[1];
       break;
       CASE(3, 4)
-      dest[0] = src[0],
-      dest[1] = src[1], dest[2] = src[2], dest[3] = 255;
+      dest[0] = src[0], dest[1] = src[1], dest[2] = src[2], dest[3] = 255;
       break;
       CASE(3, 1) dest[0] = compute_y(src[0], src[1], src[2]);
       break;
@@ -704,7 +694,7 @@ static uint32 bmask[17] = {0,   1,    3,    7,    15,   31,    63,    127,  255,
                            511, 1023, 2047, 4095, 8191, 16383, 32767, 65535};
 
 // decode a jpeg huffman value from the bitstream
-__forceinline static int decode(jpeg *j, huffman *h) {
+inline static int decode(jpeg *j, huffman *h) {
   unsigned int temp;
   int c, k;
 
@@ -756,7 +746,7 @@ __forceinline static int decode(jpeg *j, huffman *h) {
 
 // combined JPEG 'receive' and JPEG 'extend', since baseline
 // always extends everything it receives.
-__forceinline static int extend_receive(jpeg *j, int n) {
+inline static int extend_receive(jpeg *j, int n) {
   unsigned int m = 1 << (n - 1);
   unsigned int k;
   if (j->code_bits < n)
@@ -821,7 +811,7 @@ static int decode_block(jpeg *j, short data[64], huffman *hdc, huffman *hac,
 }
 
 // take a -128..127 value and clamp it and convert to 0..255
-__forceinline static uint8 clamp(int x) {
+inline static uint8 clamp(int x) {
   x += 128;
   // trick to use a single test to catch both cases
   if ((unsigned int)x > 255) {
@@ -1726,7 +1716,7 @@ typedef struct {
   uint16 value[288];
 } zhuffman;
 
-__forceinline static int bitreverse16(int n) {
+inline static int bitreverse16(int n) {
   n = ((n & 0xAAAA) >> 1) | ((n & 0x5555) << 1);
   n = ((n & 0xCCCC) >> 2) | ((n & 0x3333) << 2);
   n = ((n & 0xF0F0) >> 4) | ((n & 0x0F0F) << 4);
@@ -1734,7 +1724,7 @@ __forceinline static int bitreverse16(int n) {
   return n;
 }
 
-__forceinline static int bit_reverse(int v, int bits) {
+inline static int bit_reverse(int v, int bits) {
   assert(bits <= 16);
   // to bit reverse n bits, reverse 16 and shift
   // e.g. 11 bits, bit reverse and shift away 5
@@ -1805,7 +1795,7 @@ typedef struct {
   zhuffman z_length, z_distance;
 } zbuf;
 
-__forceinline static int zget8(zbuf *z) {
+inline static int zget8(zbuf *z) {
   if (z->zbuffer >= z->zbuffer_end)
     return 0;
   return *z->zbuffer++;
@@ -1819,7 +1809,7 @@ static void fill_bits(zbuf *z) {
   } while (z->num_bits <= 24);
 }
 
-__forceinline static unsigned int zreceive(zbuf *z, int n) {
+inline static unsigned int zreceive(zbuf *z, int n) {
   unsigned int k;
   if (z->num_bits < n)
     fill_bits(z);
@@ -1829,7 +1819,7 @@ __forceinline static unsigned int zreceive(zbuf *z, int n) {
   return k;
 }
 
-__forceinline static int zhuffman_decode(zbuf *a, zhuffman *z) {
+inline static int zhuffman_decode(zbuf *a, zhuffman *z) {
   int b, s, k;
   if (a->num_bits < 16)
     fill_bits(a);
