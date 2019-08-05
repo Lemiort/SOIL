@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.13.3)
 set(PROJECT_NAME "SOIL")
 
 project(${PROJECT_NAME} C)
-set(CMAKE_BUILD_TYPE Release)
 
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
