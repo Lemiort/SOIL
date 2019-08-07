@@ -66,10 +66,6 @@ LoadCapability GetDxtCapability(void);
 #define SOIL_RGBA_S3TC_DXT1 0x83F1
 #define SOIL_RGBA_S3TC_DXT3 0x83F2
 #define SOIL_RGBA_S3TC_DXT5 0x83F3
-typedef void (*P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC)(
-    GLenum target, GLint level, GLenum internalformat, GLsizei width,
-    GLsizei height, GLint border, GLsizei imageSize, const GLvoid *data);
-P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC soilGlCompressedTexImage2D = NULL;
 std::optional<uint32_t> DirectLoadDds(const char *filename,
                                       unsigned int reuse_texture_ID, int flags,
                                       int loading_as_cubemap);
@@ -991,9 +987,9 @@ std::optional<uint32_t> CreateOglTextureInternal(
                                                  &DDS_size);
             }
             if (DDS_data) {
-                soilGlCompressedTexImage2D(opengl_texture_target, 0,
-                                           internal_texture_format, width,
-                                           height, 0, DDS_size, DDS_data);
+                glCompressedTexImage2DARB(opengl_texture_target, 0,
+                                          internal_texture_format, width,
+                                          height, 0, DDS_size, DDS_data);
                 check_for_GL_errors("glCompressedTexImage2D");
                 FreeImageData(DDS_data);
                 /*	printf( "Internal DXT compressor\n" );	*/
@@ -1042,7 +1038,7 @@ std::optional<uint32_t> CreateOglTextureInternal(
                                                          &DDS_size);
                     }
                     if (DDS_data) {
-                        soilGlCompressedTexImage2D(
+                        glCompressedTexImage2DARB(
                             opengl_texture_target, MIPlevel,
                             internal_texture_format, MIPwidth, MIPheight, 0,
                             DDS_size, DDS_data);
@@ -1424,8 +1420,8 @@ std::optional<uint32_t> DirectLoadDdsFromMemory(
                 glTexImage2D(cf_target, 0, S3TC_type, width, height, 0,
                              S3TC_type, GL_UNSIGNED_BYTE, DDS_data);
             } else {
-                soilGlCompressedTexImage2D(cf_target, 0, S3TC_type, width,
-                                           height, 0, DDS_main_size, DDS_data);
+                glCompressedTexImage2DARB(cf_target, 0, S3TC_type, width,
+                                          height, 0, DDS_main_size, DDS_data);
             }
             //	upload the mipmaps, if we have them
             for (i = 1; i <= mipmaps; ++i) {
@@ -1445,9 +1441,8 @@ std::optional<uint32_t> DirectLoadDdsFromMemory(
                                  GL_UNSIGNED_BYTE, &DDS_data[byte_offset]);
                 } else {
                     mip_size = ((w + 3) / 4) * ((h + 3) / 4) * block_size;
-                    soilGlCompressedTexImage2D(cf_target, i, S3TC_type, w, h, 0,
-                                               mip_size,
-                                               &DDS_data[byte_offset]);
+                    glCompressedTexImage2DARB(cf_target, i, S3TC_type, w, h, 0,
+                                              mip_size, &DDS_data[byte_offset]);
                 }
                 //	and move to the next mipmap
                 byte_offset += mip_size;
@@ -1596,25 +1591,8 @@ LoadCapability GetDxtCapability(void) {
             //	not there, flag the failure
             has_DXT_capability = LoadCapability::kNone;
         } else {
-            //	and find the address of the extension function
-            P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC ext_addr =
-                reinterpret_cast<P_SOIL_GLCOMPRESSEDTEXIMAGE2DPROC>(
-                    glGetProcAddressREGAL("glCompressedTexImage2DARB"));
-            //	Flag it so no checks needed later
-            if (NULL == ext_addr) {
-                // hmm, not good!!  This should not happen, but does on my
-                //         laptop's VIA chipset.  The
-                //    GL_EXT_texture_compression_s3tc spec requires that
-                //    ARB_texture_compression be present too. this means I can
-                //    upload and have the OpenGL drive do the conversion, but I
-                //    can't use my own routines or load DDS files from disk and
-                //    upload them directly [8^(
-                has_DXT_capability = LoadCapability::kNone;
-            } else {
-                //	all's well!
-                soilGlCompressedTexImage2D = ext_addr;
-                has_DXT_capability = LoadCapability::kPresent;
-            }
+            //	all's well!
+            has_DXT_capability = LoadCapability::kPresent;
         }
     }
     //	let the user know if we can do DXT or not
