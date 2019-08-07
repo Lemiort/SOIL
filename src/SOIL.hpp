@@ -41,7 +41,9 @@ patching some explicit casts
 #ifndef HEADER_SIMPLE_OPENGL_IMAGE_LIBRARY
 #define HEADER_SIMPLE_OPENGL_IMAGE_LIBRARY
 
+#include <cstdint>
 #include <optional>
+#include <string>
 
 namespace soil {
 
@@ -124,8 +126,9 @@ enum HdrTypes {
  * kMultiplyAlpha | kInvertY | kCompressToDxt | kDdsLoadDirect
  * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
  */
-unsigned int LoadOglTexture(const char *filename, int force_channels,
-                            unsigned int reuse_texture_ID, unsigned int flags);
+std::optional<uint32_t> LoadOglTexture(const char *filename, int force_channels,
+                                       unsigned int reuse_texture_ID,
+                                       unsigned int flags);
 
 /**
  * @brief Loads 6 images from disk into an OpenGL cubemap texture.
@@ -143,11 +146,10 @@ unsigned int LoadOglTexture(const char *filename, int force_channels,
  * @param flags can be any of soil::Flags
  * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
  */
-unsigned int LoadOglCubemap(const char *x_pos_file, const char *x_neg_file,
-                            const char *y_pos_file, const char *y_neg_file,
-                            const char *z_pos_file, const char *z_neg_file,
-                            int force_channels, unsigned int reuse_texture_ID,
-                            unsigned int flags);
+std::optional<uint32_t> LoadOglCubemap(
+    const char *x_pos_file, const char *x_neg_file, const char *y_pos_file,
+    const char *y_neg_file, const char *z_pos_file, const char *z_neg_file,
+    int force_channels, unsigned int reuse_texture_ID, unsigned int flags);
 
 /**
  * @brief Loads 1 image from disk and splits it into an OpenGL cubemap texture.
@@ -162,10 +164,11 @@ unsigned int LoadOglCubemap(const char *x_pos_file, const char *x_neg_file,
  * @param flags can be any of soil::Flags
  * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
  */
-unsigned int LoadOglSingleCubemap(const char *filename,
-                                  const char face_order[6], int force_channels,
-                                  unsigned int reuse_texture_ID,
-                                  unsigned int flags);
+std::optional<uint32_t> LoadOglSingleCubemap(const char *filename,
+                                             const char face_order[6],
+                                             int force_channels,
+                                             unsigned int reuse_texture_ID,
+                                             unsigned int flags);
 
 /**
  * @brief Loads an HDR image from disk into an OpenGL texture.
@@ -178,10 +181,11 @@ unsigned int LoadOglSingleCubemap(const char *filename,
  * @param flags can be any of soil::Flags
  * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
  */
-unsigned int LoadOglHdrTexture(const char *filename, int fake_HDR_format,
-                               int rescale_to_max,
-                               unsigned int reuse_texture_ID,
-                               unsigned int flags);
+std::optional<uint32_t> LoadOglHdrTexture(const char *filename,
+                                          int fake_HDR_format,
+                                          int rescale_to_max,
+                                          unsigned int reuse_texture_ID,
+                                          unsigned int flags);
 
 /**
  * @brief Loads an image from RAM into an OpenGL texture.
@@ -195,10 +199,9 @@ unsigned int LoadOglHdrTexture(const char *filename, int fake_HDR_format,
  * @param flags can be any of soil::Flags
  * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
  */
-unsigned int LoadOglTextureFromMemory(const unsigned char *const buffer,
-                                      int buffer_length, int force_channels,
-                                      unsigned int reuse_texture_ID,
-                                      unsigned int flags);
+std::optional<uint32_t> LoadOglTextureFromMemory(
+    const unsigned char *const buffer, int buffer_length, int force_channels,
+    unsigned int reuse_texture_ID, unsigned int flags);
 
 /**
  * @brief Loads 6 images from memory into an OpenGL cubemap texture.
@@ -222,7 +225,7 @@ unsigned int LoadOglTextureFromMemory(const unsigned char *const buffer,
  * @param flags can be any of soil::Flags
  * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
  */
-unsigned int LoadOglCubemapFromMemory(
+std::optional<uint32_t> LoadOglCubemapFromMemory(
     const unsigned char *const x_pos_buffer, int x_pos_buffer_length,
     const unsigned char *const x_neg_buffer, int x_neg_buffer_length,
     const unsigned char *const y_pos_buffer, int y_pos_buffer_length,
@@ -245,12 +248,10 @@ unsigned int LoadOglCubemapFromMemory(
  * @param flags can be any of soil::Flags
  * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
  */
-unsigned int LoadOglSingleCubemapFromMemory(const unsigned char *const buffer,
-                                            int buffer_length,
-                                            const char face_order[6],
-                                            int force_channels,
-                                            unsigned int reuse_texture_ID,
-                                            unsigned int flags);
+std::optional<uint32_t> LoadOglSingleCubemapFromMemory(
+    const unsigned char *const buffer, int buffer_length,
+    const char face_order[6], int force_channels, unsigned int reuse_texture_ID,
+    unsigned int flags);
 
 /**
  * @brief Creates a 2D OpenGL texture from raw image data.
@@ -268,10 +269,10 @@ unsigned int LoadOglSingleCubemapFromMemory(const unsigned char *const buffer,
  * @param flags can be any of soil::Flags
  * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
  */
-unsigned int CreateOglTexture(const unsigned char *const data, int width,
-                              int height, int channels,
-                              unsigned int reuse_texture_ID,
-                              unsigned int flags);
+std::optional<uint32_t> CreateOglTexture(const unsigned char *const data,
+                                         int width, int height, int channels,
+                                         unsigned int reuse_texture_ID,
+                                         unsigned int flags);
 
 /**
  * @brief Creates an OpenGL cubemap texture by splitting up 1 image into 6
@@ -289,11 +290,12 @@ unsigned int CreateOglTexture(const unsigned char *const data, int width,
  * @param flags can be any of soil::Flags
  * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
  */
-unsigned int CreateOglSingleCubemap(const unsigned char *const data, int width,
-                                    int height, int channels,
-                                    const char face_order[6],
-                                    unsigned int reuse_texture_ID,
-                                    unsigned int flags);
+std::optional<uint32_t> CreateOglSingleCubemap(const unsigned char *const data,
+                                               int width, int height,
+                                               int channels,
+                                               const char face_order[6],
+                                               unsigned int reuse_texture_ID,
+                                               unsigned int flags);
 
 /**
  * @brief Captures the OpenGL window (RGB) and saves it to disk
@@ -306,8 +308,8 @@ unsigned int CreateOglSingleCubemap(const unsigned char *const data, int width,
  * @param height
  * @return int 0 if it failed, otherwise returns 1
  */
-int SaveScreenshot(const char *filename, int image_type, int x, int y,
-                   int width, int height);
+bool SaveScreenshot(const char *filename, int image_type, int x, int y,
+                    int width, int height);
 
 /**
  * @brief Loads an image from disk into an array of unsigned chars.
@@ -359,8 +361,8 @@ unsigned char *LoadImageFromMemory(const unsigned char *const buffer,
  * @param data
  * @return int 0 if failed, otherwise returns 1
  */
-int SaveImage(const char *filename, int image_type, int width, int height,
-              int channels, const unsigned char *const data);
+bool SaveImage(const char *filename, int image_type, int width, int height,
+               int channels, const unsigned char *const data);
 
 /**
  * @brief  Frees the image data
@@ -372,13 +374,12 @@ int SaveImage(const char *filename, int image_type, int width, int height,
 void FreeImageData(unsigned char *img_data);
 
 /**
- * @brief This function resturn a pointer to a string describing the last thing
- * that happened inside SOIL. It can be used to determine why an image failed to
- * load.
+ * @brief This function resturn a string describing the last thing that happened
+ * inside SOIL. It can be used to determine why an image failed to load.
  *
- * @return const char*
+ * @return std::string
  */
-const char *GetLastResult(void);
+std::string GetLastResult(void);
 
 }  // namespace soil
 
