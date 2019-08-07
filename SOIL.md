@@ -24,11 +24,11 @@ Public Domain
     TGA - greyscale or RGB or RGBA or indexed, uncompressed or RLE
     DDS - DXT1/2/3/4/5, uncompressed, cubemaps (can't read 3D DDS files yet)
     PSD - (from stb_image documentation)
-    HDR - converted to LDR, unless loaded with *HDR* functions (RGBE or RGBdivA or RGBdivA2) 
+    HDR - converted to LDR, unless loaded with *HDR* functions (RGBE or RGBdivA or RGBdivA2)
 - Writeable Image Formats:
     TGA - Greyscale or RGB or RGBA, uncompressed
     BMP - RGB, uncompressed
-    DDS - RGB as DXT1, or RGBA as DXT5 
+    DDS - RGB as DXT1, or RGBA as DXT5
 - Can load an image file directly into a 2D OpenGL texture, optionally performing the following functions:
     Can generate a new texture handle, or reuse one specified
     Can automatically rescale the image to the next largest power-of-two size
@@ -40,21 +40,20 @@ Public Domain
     Can convert the RGB to YCoCg color space (useful with DXT5 compression: see [this link](http://developer.nvidia.com/object/real-time-ycocg-dxt-compression.html) from NVIDIA)
     Will automatically downsize a texture if it is larger than GL_MAX_TEXTURE_SIZE
     Can directly upload DDS files (DXT1/3/5/uncompressed/cubemap, with or without MIPmaps). Note: directly uploading the compressed DDS image will disable the other options (no flipping, no pre-multiplying alpha, no rescaling, no creation of MIPmaps, no auto-downsizing)
-    Can load rectangluar textures for GUI elements or splash screens (requires GL_ARB/EXT/NV_texture_rectangle) 
+    Can load rectangluar textures for GUI elements or splash screens (requires GL_ARB/EXT/NV_texture_rectangle)
 - Can decompress images from RAM (e.g. via [PhysicsFS](http://icculus.org/physfs/) or similar) into an OpenGL texture (same features as regular 2D textures, above)
 - Can load cube maps directly into an OpenGL texture (same features as regular 2D textures, above)
     Can take six image files directly into an OpenGL cube map texture
-    Can take a single image file where width = 6*height (or vice versa), split it into an OpenGL cube map texture 
+    Can take a single image file where width = 6*height (or vice versa), split it into an OpenGL cube map texture
 - No external dependencies
 - Tiny
 - Cross platform (Windows, *nix, Mac OS X)
-- Public Domain 
+- Public Domain
 
 ## ToDo
 
 - More testing
-- Add HDR functions to load from memory and load to RGBE unsigned char* 
-
+- Add HDR functions to load from memory and load to RGBE unsigned char*
 
 ## Usage
 
@@ -64,171 +63,169 @@ Simply include SOIL.h in your C or C++ file, link in the static library, and the
 
 ```c
 /* load an image file directly as a new OpenGL texture */
-GLuint tex_2d = SOIL_load_OGL_texture
-	(
-		"img.png",
-		SOIL_LOAD_AUTO,
-		SOIL_CREATE_NEW_ID,
-		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_NTSC_SAFE_RGB | SOIL_FLAG_COMPRESS_TO_DXT
-	);
-	
+GLuint tex_2d = LoadOglTexture
+    (
+        "img.png",
+        LoadFormats::kAuto,
+        kSoilCreateNewId,
+        Flags::kMipMaps | Flags::kInvertY | Flags::kNtscSafeRgb | Flags::kCompressToDxt
+    );
+
 /* check for an error during the load process */
 if( 0 == tex_2d )
 {
-	printf( "SOIL loading error: '%s'\n", SOIL_last_result() );
+    printf( "SOIL loading error: '%s'\n", GetLastResult() );
 }
 
 /* load another image, but into the same texture ID, overwriting the last one */
-tex_2d = SOIL_load_OGL_texture
-	(
-		"some_other_img.dds",
-		SOIL_LOAD_AUTO,
-		tex_2d,
-		SOIL_FLAG_DDS_LOAD_DIRECT
-	);
-	
+tex_2d = LoadOglTexture
+    (
+        "some_other_img.dds",
+        LoadFormats::kAuto,
+        tex_2d,
+        Flags::kDdsLoadDirect
+    );
+
 /* load 6 images into a new OpenGL cube map, forcing RGB */
-GLuint tex_cube = SOIL_load_OGL_cubemap
-	(
-		"xp.jpg",
-		"xn.jpg",
-		"yp.jpg",
-		"yn.jpg",
-		"zp.jpg",
-		"zn.jpg",
-		SOIL_LOAD_RGB,
-		SOIL_CREATE_NEW_ID,
-		SOIL_FLAG_MIPMAPS
-	);
-	
+GLuint tex_cube = LoadOglCubemap
+    (
+        "xp.jpg",
+        "xn.jpg",
+        "yp.jpg",
+        "yn.jpg",
+        "zp.jpg",
+        "zn.jpg",
+        LoadFormats::kRgb,
+        kSoilCreateNewId,
+        Flags::kMipMaps
+    );
+
 /* load and split a single image into a new OpenGL cube map, default format */
 /* face order = East South West North Up Down => "ESWNUD", case sensitive! */
-GLuint single_tex_cube = SOIL_load_OGL_single_cubemap
-	(
-		"split_cubemap.png",
-		"EWUDNS",
-		SOIL_LOAD_AUTO,
-		SOIL_CREATE_NEW_ID,
-		SOIL_FLAG_MIPMAPS
-	);
-	
+GLuint single_tex_cube = LoadOglSingleCubemap
+    (
+        "split_cubemap.png",
+        "EWUDNS",
+        LoadFormats::kAuto,
+        kSoilCreateNewId,
+        Flags::kMipMaps
+    );
+
 /* actually, load a DDS cubemap over the last OpenGL cube map, default format */
 /* try to load it directly, but give the order of the faces in case that fails */
 /* the DDS cubemap face order is pre-defined as SOIL_DDS_CUBEMAP_FACE_ORDER */
-single_tex_cube = SOIL_load_OGL_single_cubemap
-	(
-		"overwrite_cubemap.dds",
-		SOIL_DDS_CUBEMAP_FACE_ORDER,
-		SOIL_LOAD_AUTO,
-		single_tex_cube,
-		SOIL_FLAG_MIPMAPS | SOIL_FLAG_DDS_LOAD_DIRECT
-	);
-	
+single_tex_cube = LoadOglSingleCubemap
+    (
+        "overwrite_cubemap.dds",
+        SOIL_DDS_CUBEMAP_FACE_ORDER,
+        LoadFormats::kAuto,
+        single_tex_cube,
+        Flags::kMipMaps | Flags::kDdsLoadDirect
+    );
+
 /* load an image as a heightmap, forcing greyscale (so channels should be 1) */
 int width, height, channels;
-unsigned char *ht_map = SOIL_load_image
-	(
-		"terrain.tga",
-		&width, &height, &channels,
-		SOIL_LOAD_L
-	);
-	
+unsigned char *ht_map = LoadImage
+    (
+        "terrain.tga",
+        &width, &height, &channels,
+        LoadFormats::kLuminous
+    );
+
 /* save that image as another type */
-int save_result = SOIL_save_image
-	(
-		"new_terrain.dds",
-		SOIL_SAVE_TYPE_DDS,
-		width, height, channels,
-		ht_map
-	);
-	
+int save_result = SaveImage
+    (
+        "new_terrain.dds",
+        SaveTypes::kDds,
+        width, height, channels,
+        ht_map
+    );
+
 /* save a screenshot of your awesome OpenGL game engine, running at 1024x768 */
-save_result = SOIL_save_screenshot
-	(
-		"awesomenessity.bmp",
-		SOIL_SAVE_TYPE_BMP,
-		0, 0, 1024, 768
-	);
+save_result = SaveScreenshot
+    (
+        "awesomenessity.bmp",
+        SaveTypes::kBmp,
+        0, 0, 1024, 768
+    );
 
 /* loaded a file via PhysicsFS, need to decompress the image from RAM, */
 /* where it's in a buffer: unsigned char *image_in_RAM */
-GLuint tex_2d_from_RAM = SOIL_load_OGL_texture_from_memory
-	(
-		image_in_RAM,
-		image_in_RAM_bytes,
-		SOIL_LOAD_AUTO,
-		SOIL_CREATE_NEW_ID,
-		SOIL_FLAG_MIPMAPS | SOIL_FLAG_INVERT_Y | SOIL_FLAG_COMPRESS_TO_DXT
-	);
-	
-/* done with the heightmap, free up the RAM */
-SOIL_free_image_data( ht_map );
-```
+GLuint tex_2d_from_RAM = LoadOglTextureFromMemory
+    (
+        image_in_RAM,
+        image_in_RAM_bytes,
+        LoadFormats::kAuto,
+        kSoilCreateNewId,
+        Flags::kMipMaps | Flags::kInvertY | Flags::kCompressToDxt
+    );
 
+/* done with the heightmap, free up the RAM */
+FreeImageData( ht_map );
+```
 
 ## Change Log
 
 - July 7, 2008
     upgraded to stb_image 1.16 (threadsafe! loads PSD and HDR formats)
     removed __inline__ keyword from native SOIL functions (thanks Sherief, Boder, Amnesiac5!)
-    added SOIL_load_OGL_HDR_texture (loads a Radience HDR file into RGBE, RGB/a, RGB/A^2)
+    added LoadOglHdrTexture (loads a Radience HDR file into RGBE, RGB/a, RGB/A^2)
     fixed a potential bug loading DDS files with a filename
-    added a VC9 project file (thanks Sherief!) 
-- November 10, 2007: added SOIL_FLAG_TEXTURE_RECTANGLE (pixel addressed non POT, useful for GUI, splash screens, etc.). Not useful with cubemaps, and disables repeating and MIPmaps.
+    added a VC9 project file (thanks Sherief!)
+- November 10, 2007: added Flags::kTextureRectangle (pixel addressed non POT, useful for GUI, splash screens, etc.). Not useful with cubemaps, and disables repeating and MIPmaps.
 - November 8, 2007
     upgraded to stb_image 1.07
-    fixed some includes and defines for compiling on OS X (thanks Mogui and swiftcoder!) 
+    fixed some includes and defines for compiling on OS X (thanks Mogui and swiftcoder!)
 - October 30, 2007
     upgraded to stb_image 1.04, some tiny bug fixes
     there is now a makefile (under projects) for ease of building under Linux (thanks D J Peters!)
     Visual Studio 6/2003/2005 projects are working again
     patched SOIL for better pointer handling of the glCompressedTexImage2D extension (thanks Peter Sperl!)
     fixed DDS loading when force_channels=4 but there was no alpha; it was returning 3 channels. (Thanks LaurentGom!)
-    fixed a bunch of channel issues in general. (Thanks Sean Barrett!) 
+    fixed a bunch of channel issues in general. (Thanks Sean Barrett!)
 - October 27, 2007
     correctly reports when there is no OpenGL context (thanks Merick Zero!)
     upgraded to stb_image 1.03 with support for loading the HDR image format
     fixed loading JPEG images while forcing the number of channels (e.g. to RGBA)
     changed SOIL_DDS_CUBEMAP_FACE_ORDER to a #define (thanks Dancho!)
     reorganized my additions to stb_image (you can define STBI_NO_DDS to compile SOIL without DDS support)
-    added SOIL_FLAG_CoCg_Y, will convert RGB or RGBA to YCoCg color space ([link](http://developer.nvidia.com/object/real-time-ycocg-dxt-compression.html)) 
+    added Flags::kCoCgY, will convert RGB or RGBA to YCoCg color space ([link](http://developer.nvidia.com/object/real-time-ycocg-dxt-compression.html))
 - October 5, 2007
-    added SOIL_FLAG_NTSC_SAFE_RGB
-    bugfixed & optimized up_scale_image (used with SOIL_FLAG_POWER_OF_TWO and SOIL_FLAG_MIPMAPS) 
+    added Flags::kNtscSafeRgb
+    bugfixed & optimized up_scale_image (used with Flags::kPowerOfTwo and Flags::kMipMaps)
 - September 20, 2007
     upgraded to stb_image 1.0
     added the DXT source files to the MSVS projects
     removed sqrtf() calls (VS2k3 could not handle them)
     distributing only 1 library file (libSOIL.a, compiled with MinGW 4.2.1 tech preview!) for all windows compilers
-    added an example of the *_from_memory() functions to the Usage section 
+    added an example of the *_from_memory() functions to the Usage section
 - September 6, 2007
     added a slew of SOIL_load_*_from_memory() functions for people using PhysicsFS or similar
-    more robust loading of non-compliant DDS files (thanks Dan!) 
+    more robust loading of non-compliant DDS files (thanks Dan!)
 - September 1, 2007 - fixed bugs from the last update [8^)
 - August 31, 2007
     can load uncompressed and cubemap DDS files
     can create a cubemap texture from a single (stitched) image file of any type
-    sped up the image resizing code 
+    sped up the image resizing code
 - August 24, 2007 - updated the documentation examples (at the bottom of this page)
 - August 22, 2007
     can load cube maps (needs serious testing)
     can compress 1- or 2-channel images to DXT1/5
     fixed some malloc() casts
     fixed C++ style comments
-    fixed includes to compile under *nix or Mac (hopefully, needs testing...any volunteers?) 
+    fixed includes to compile under *nix or Mac (hopefully, needs testing...any volunteers?)
 - August 16, 2007
     Will now downsize the image if necessary to fit GL_MAX_TEXTURE_SIZE
-    added SOIL_create_OGL_texture() to upload raw image data that isn't from an image file 
+    added CreateOglTexture() to upload raw image data that isn't from an image file
 - August 14, 2007 (PM) - Can now load indexed TGA
 - August 14, 2007 (AM)
     Updated to stb_image 0.97
     added result messages
-    can now decompress DDS files (DXT1/2/3/4/5) 
+    can now decompress DDS files (DXT1/2/3/4/5)
 - August 11, 2007 - MIPmaps can now handle non-square textures
 - August 7, 2007
     Can directly upload DXT1/3/5 DDS files (with or w/o MIPmaps)
     can compress any image to DXT1/5 (using a new & fast & simple compression scheme) and upload
-    can save as DDS 
+    can save as DDS
 - July 31, 2007 - added compressing to DXT and flipping about Y
-- July 30, 2007 - initial release 
-
+- July 30, 2007 - initial release

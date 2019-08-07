@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.13.3)
 set(PROJECT_NAME "SOIL")
 
-project(${PROJECT_NAME} C)
+project(${PROJECT_NAME} CXX)
+
 
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
@@ -18,7 +19,14 @@ endif()
 
 include_directories(${GLEW_INCLUDE_DIR})
 include_directories(src)
-file(GLOB_RECURSE SOURCES_LIST "src/*.c")
+file(GLOB_RECURSE SOURCES_LIST "src/*.cpp")
 
 add_library(${PROJECT_NAME} ${SOURCES_LIST})
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED YES
+    CXX_EXTENSIONS NO
+)
+
 target_link_libraries(${PROJECT_NAME} ${CONAN_LIBS})
