@@ -66,7 +66,7 @@ Simply include SOIL.h in your C or C++ file, link in the static library, and the
 GLuint tex_2d = LoadOglTexture
     (
         "img.png",
-        LoadFormats::kAuto,
+        ImageChannels::kAuto,
         kSoilCreateNewId,
         Flags::kMipMaps | Flags::kInvertY | Flags::kNtscSafeRgb | Flags::kCompressToDxt
     );
@@ -81,7 +81,7 @@ if( 0 == tex_2d )
 tex_2d = LoadOglTexture
     (
         "some_other_img.dds",
-        LoadFormats::kAuto,
+        ImageChannels::kAuto,
         tex_2d,
         Flags::kDdsLoadDirect
     );
@@ -95,7 +95,7 @@ GLuint tex_cube = LoadOglCubemap
         "yn.jpg",
         "zp.jpg",
         "zn.jpg",
-        LoadFormats::kRgb,
+        ImageChannels::kRgb,
         kSoilCreateNewId,
         Flags::kMipMaps
     );
@@ -106,7 +106,7 @@ GLuint single_tex_cube = LoadOglSingleCubemap
     (
         "split_cubemap.png",
         "EWUDNS",
-        LoadFormats::kAuto,
+        ImageChannels::kAuto,
         kSoilCreateNewId,
         Flags::kMipMaps
     );
@@ -118,7 +118,7 @@ single_tex_cube = LoadOglSingleCubemap
     (
         "overwrite_cubemap.dds",
         SOIL_DDS_CUBEMAP_FACE_ORDER,
-        LoadFormats::kAuto,
+        ImageChannels::kAuto,
         single_tex_cube,
         Flags::kMipMaps | Flags::kDdsLoadDirect
     );
@@ -129,7 +129,7 @@ unsigned char *ht_map = LoadImage
     (
         "terrain.tga",
         &width, &height, &channels,
-        LoadFormats::kLuminous
+        ImageChannels::kLuminous
     );
 
 /* save that image as another type */
@@ -155,7 +155,7 @@ GLuint tex_2d_from_RAM = LoadOglTextureFromMemory
     (
         image_in_RAM,
         image_in_RAM_bytes,
-        LoadFormats::kAuto,
+        ImageChannels::kAuto,
         kSoilCreateNewId,
         Flags::kMipMaps | Flags::kInvertY | Flags::kCompressToDxt
     );

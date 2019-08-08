@@ -16,6 +16,8 @@
 
 #define SOIL_CHECK_FOR_GL_ERRORS 0
 
+#include <filesystem>
+
 #include <GL/glew.h>
 
 #include "SOIL.hpp"
@@ -66,469 +68,272 @@ LoadCapability GetDxtCapability(void);
 #define SOIL_RGBA_S3TC_DXT1 0x83F1
 #define SOIL_RGBA_S3TC_DXT3 0x83F2
 #define SOIL_RGBA_S3TC_DXT5 0x83F3
-std::optional<uint32_t> DirectLoadDds(const char *filename,
+std::optional<uint32_t> DirectLoadDds(std::string filename,
                                       unsigned int reuse_texture_ID, int flags,
                                       int loading_as_cubemap);
-std::optional<uint32_t> DirectLoadDdsFromMemory(
-    const unsigned char *const buffer, int buffer_length,
-    unsigned int reuse_texture_ID, int flags, int loading_as_cubemap);
+std::optional<uint32_t> DirectLoadDdsFromMemory(const uint8_t *const buffer,
+                                                int buffer_length,
+                                                unsigned int reuse_texture_ID,
+                                                int flags,
+                                                int loading_as_cubemap);
 /*	other functions	*/
 std::optional<uint32_t> CreateOglTextureInternal(
-    const unsigned char *const data, int width, int height, int channels,
+    const uint8_t *const data, int width, int height, ImageChannels channels,
     unsigned int reuse_texture_ID, unsigned int flags,
     unsigned int opengl_texture_type, unsigned int opengl_texture_target,
     unsigned int texture_check_size_enum);
 
 /*	and the code magic begins here [8^)	*/
-std::optional<uint32_t> LoadOglTexture(const char *filename, int force_channels,
+std::optional<uint32_t> LoadOglTexture(std::string filename,
+                                       ImageChannels force_channels,
                                        unsigned int reuse_texture_ID,
-                                       unsigned int flags) {
-    /*	variables	*/
-    unsigned char *img;
-    int width, height, channels;
+                                       uint32_t flags) {
+    uint8_t *img;
+    int width, height;
+    ImageChannels channels{ImageChannels::kAuto};
     std::optional<uint32_t> tex_id;
-    /*	does the user want direct uploading of the image as a DDS file?	*/
+    //	does the user want direct uploading of the image as a DDS file?
     if (flags & Flags::kDdsLoadDirect) {
-        /*	1st try direct loading of the image as a DDS file
-                note: direct uploading will only load what is in the
-                DDS file, no MIPmaps will be generated, the image will
-                not be flipped, etc.	*/
+        // 1st try direct loading of the image as a DDS file
+        // note: direct uploading will only load what is in the
+        // DDS file, no MIPmaps will be generated, the image will
+        // not be flipped, etc.
         tex_id = DirectLoadDds(filename, reuse_texture_ID, flags, 0);
         if (tex_id) {
             //	hey, it worked!!
             return tex_id;
         }
     }
-    /*	try to load the image	*/
-    img = LoadImage(filename, &width, &height, &channels, force_channels);
-    /*	channels holds the original number of channels, which may have been
-     * forced	*/
-    if ((force_channels >= 1) && (force_channels <= 4)) {
+    //	try to load the image
+    img = LoadImage(filename, &width, &height, channels, force_channels);
+    // channels holds the original number of channels, which may have been
+    // forced
+    if (force_channels != ImageChannels::kAuto) {
         channels = force_channels;
     }
-    if (NULL == img) {
-        /*	image loading failed	*/
+    if (nullptr == img) {
+        //	image loading failed
         last_result_description = stbi_failure_reason();
         return std::nullopt;
     }
-    /*	OK, make it a texture!	*/
+    //	OK, make it a texture!
     tex_id = CreateOglTextureInternal(img, width, height, channels,
                                       reuse_texture_ID, flags, GL_TEXTURE_2D,
                                       GL_TEXTURE_2D, GL_MAX_TEXTURE_SIZE);
-    /*	and nuke the image data	*/
+    //	and nuke the image data
     FreeImageData(img);
-    /*	and return the handle, such as it is	*/
+    //	and return the handle, such as it is
     return tex_id;
 }
 
-std::optional<uint32_t> LoadOglHdrTexture(const char *filename,
-                                          int fake_HDR_format,
+std::optional<uint32_t> LoadOglHdrTexture(std::string filename,
+                                          HdrTypes fake_HDR_format,
                                           int rescale_to_max,
                                           unsigned int reuse_texture_ID,
                                           unsigned int flags) {
-    /*	variables	*/
-    unsigned char *img;
+    uint8_t *img;
     int width, height, channels;
     std::optional<uint32_t> tex_id;
-    /*	no direct uploading of the image as a DDS file	*/
-    /* error check */
+    // no direct uploading of the image as a DDS file
+    // error check
     if ((fake_HDR_format != HdrTypes::kRgbe) &&
         (fake_HDR_format != HdrTypes::kRgbDivA) &&
         (fake_HDR_format != HdrTypes::kRgbDivA2)) {
         last_result_description = "Invalid fake HDR format specified";
         return std::nullopt;
     }
-    /*	try to load the image (only the HDR type) */
-    img = stbi_hdr_load_rgbe(filename, &width, &height, &channels, 4);
-    /*	channels holds the original number of channels, which may have been
-     * forced	*/
-    if (NULL == img) {
-        /*	image loading failed	*/
+    //	try to load the image (only the HDR type)
+    img = stbi_hdr_load_rgbe(filename.c_str(), &width, &height, &channels, 4);
+    //	channels holds the original number of channels, which may have been
+    // forced
+    if (nullptr == img) {
+        //	image loading failed
         last_result_description = stbi_failure_reason();
         return std::nullopt;
     }
-    /* the load worked, do I need to convert it? */
+    // the load worked, do I need to convert it?
     if (fake_HDR_format == HdrTypes::kRgbDivA) {
         RGBE_to_RGBdivA(img, width, height, rescale_to_max);
     } else if (fake_HDR_format == HdrTypes::kRgbDivA2) {
         RGBE_to_RGBdivA2(img, width, height, rescale_to_max);
     }
-    /*	OK, make it a texture!	*/
-    tex_id = CreateOglTextureInternal(img, width, height, channels,
+    //	OK, make it a texture!
+    tex_id = CreateOglTextureInternal(img, width, height,
+                                      static_cast<ImageChannels>(channels),
                                       reuse_texture_ID, flags, GL_TEXTURE_2D,
                                       GL_TEXTURE_2D, GL_MAX_TEXTURE_SIZE);
-    /*	and nuke the image data	*/
+    //	and nuke the image data
     FreeImageData(img);
-    /*	and return the handle, such as it is	*/
+    //	and return the handle, such as it is
     return tex_id;
 }
 
-std::optional<uint32_t> LoadOglTextureFromMemory(
-    const unsigned char *const buffer, int buffer_length, int force_channels,
-    unsigned int reuse_texture_ID, unsigned int flags) {
-    /*	variables	*/
-    unsigned char *img;
-    int width, height, channels;
+std::optional<uint32_t> LoadOglTextureFromMemory(const uint8_t *const buffer,
+                                                 int buffer_length,
+                                                 ImageChannels force_channels,
+                                                 unsigned int reuse_texture_ID,
+                                                 unsigned int flags) {
+    uint8_t *img;
+    int width, height;
+    ImageChannels channels;
     std::optional<uint32_t> tex_id;
-    /*	does the user want direct uploading of the image as a DDS file?	*/
+    //	does the user want direct uploading of the image as a DDS file?
     if (flags & Flags::kDdsLoadDirect) {
-        /*	1st try direct loading of the image as a DDS file
-                note: direct uploading will only load what is in the
-                DDS file, no MIPmaps will be generated, the image will
-                not be flipped, etc.	*/
+        // 1st try direct loading of the image as a DDS file
+        // note: direct uploading will only load what is in the
+        // DDS file, no MIPmaps will be generated, the image will
+        // not be flipped, etc.
         tex_id = DirectLoadDdsFromMemory(buffer, buffer_length,
                                          reuse_texture_ID, flags, 0);
         if (tex_id) {
-            /*	hey, it worked!!	*/
+            //	hey, it worked!!
             return tex_id;
         }
     }
-    /*	try to load the image	*/
-    img = LoadImageFromMemory(buffer, buffer_length, &width, &height, &channels,
+    //	try to load the image
+    img = LoadImageFromMemory(buffer, buffer_length, &width, &height, channels,
                               force_channels);
-    /*	channels holds the original number of channels, which may have been
-     * forced	*/
-    if ((force_channels >= 1) && (force_channels <= 4)) {
+    //	channels holds the original number of channels, which may have been
+    // forced
+    if (force_channels != ImageChannels::kAuto) {
         channels = force_channels;
     }
     if (NULL == img) {
-        /*	image loading failed	*/
+        //	image loading failed
         last_result_description = stbi_failure_reason();
         return std::nullopt;
     }
-    /*	OK, make it a texture!	*/
+    //	OK, make it a texture!
     tex_id = CreateOglTextureInternal(img, width, height, channels,
                                       reuse_texture_ID, flags, GL_TEXTURE_2D,
                                       GL_TEXTURE_2D, GL_MAX_TEXTURE_SIZE);
-    /*	and nuke the image data	*/
+    //	and nuke the image data
     FreeImageData(img);
-    /*	and return the handle, such as it is	*/
+    //	and return the handle, such as it is
     return tex_id;
 }
 
 std::optional<uint32_t> LoadOglCubemap(
-    const char *x_pos_file, const char *x_neg_file, const char *y_pos_file,
-    const char *y_neg_file, const char *z_pos_file, const char *z_neg_file,
-    int force_channels, unsigned int reuse_texture_ID, unsigned int flags) {
-    /*	variables	*/
-    unsigned char *img;
-    int width, height, channels;
+    std::string x_pos_file, std::string x_neg_file, std::string y_pos_file,
+    std::string y_neg_file, std::string z_pos_file, std::string z_neg_file,
+    ImageChannels force_channels, unsigned int reuse_texture_ID,
+    unsigned int flags) {
+    uint8_t *img;
+    int width, height;
+    ImageChannels channels;
     std::optional<uint32_t> tex_id;
-    /*	error checking	*/
-    if ((x_pos_file == NULL) || (x_neg_file == NULL) || (y_pos_file == NULL) ||
-        (y_neg_file == NULL) || (z_pos_file == NULL) || (z_neg_file == NULL)) {
-        last_result_description = "Invalid cube map files list";
-        return std::nullopt;
+    const std::pair<std::string, uint32_t> files_array[] = {
+        {x_pos_file, SOIL_TEXTURE_CUBE_MAP_POSITIVE_X},
+        {x_neg_file, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_X},
+        {y_pos_file, SOIL_TEXTURE_CUBE_MAP_POSITIVE_Y},
+        {y_neg_file, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Y},
+        {z_pos_file, SOIL_TEXTURE_CUBE_MAP_POSITIVE_Z},
+        {z_neg_file, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Z},
+    };
+    // check fo errors
+    for (const auto &file_pair : files_array) {
+        if (!std::filesystem::exists(file_pair.first)) {
+            last_result_description = "Invalid cube map files list";
+            return std::nullopt;
+        }
     }
-    /*	capability checking	*/
+    //	capability checking
     if (GetCubemapCapability() != LoadCapability::kPresent) {
         last_result_description = "No cube map capability present";
         return std::nullopt;
     }
-    /*	1st face: try to load the image	*/
-    img = LoadImage(x_pos_file, &width, &height, &channels, force_channels);
-    /*	channels holds the original number of channels, which may have been
-     * forced	*/
-    if ((force_channels >= 1) && (force_channels <= 4)) {
-        channels = force_channels;
-    }
-    if (NULL == img) {
-        /*	image loading failed	*/
-        last_result_description = stbi_failure_reason();
-        return std::nullopt;
-    }
-    /*	upload the texture, and create a texture ID if necessary	*/
-    tex_id = CreateOglTextureInternal(
-        img, width, height, channels, reuse_texture_ID, flags,
-        SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_POSITIVE_X,
-        SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
-    /*	and nuke the image data	*/
-    FreeImageData(img);
-    /*	continue?	*/
-    if (tex_id) {
-        /*	1st face: try to load the image	*/
-        img = LoadImage(x_neg_file, &width, &height, &channels, force_channels);
-        /*	channels holds the original number of channels, which may have
-         * been forced	*/
-        if ((force_channels >= 1) && (force_channels <= 4)) {
+
+    for (const auto &file_pair : files_array) {
+        //	try to load the image
+        img = LoadImage(file_pair.first, &width, &height, channels,
+                        force_channels);
+        //	channels holds the original number of channels, which may have
+        // been forced
+        if (force_channels != ImageChannels::kAuto) {
             channels = force_channels;
         }
-        if (NULL == img) {
-            /*	image loading failed	*/
+        if (nullptr == img) {
+            //	image loading failed
             last_result_description = stbi_failure_reason();
             return std::nullopt;
         }
-        /*	upload the texture, but reuse the assigned texture ID	*/
+        //	upload the texture, and create a texture ID if necessary
         tex_id = CreateOglTextureInternal(
-            img, width, height, channels, tex_id.value(), flags,
-            SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+            img, width, height, channels, reuse_texture_ID, flags,
+            SOIL_TEXTURE_CUBE_MAP, file_pair.second,
             SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
-        /*	and nuke the image data	*/
+        //	and nuke the image data
         FreeImageData(img);
     }
-    /*	continue?	*/
-    if (tex_id) {
-        /*	1st face: try to load the image	*/
-        img = LoadImage(y_pos_file, &width, &height, &channels, force_channels);
-        /*	channels holds the original number of channels, which may have
-         * been forced	*/
-        if ((force_channels >= 1) && (force_channels <= 4)) {
-            channels = force_channels;
-        }
-        if (NULL == img) {
-            /*	image loading failed	*/
-            last_result_description = stbi_failure_reason();
-            return std::nullopt;
-        }
-        /*	upload the texture, but reuse the assigned texture ID	*/
-        tex_id = CreateOglTextureInternal(
-            img, width, height, channels, tex_id.value(), flags,
-            SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_POSITIVE_Y,
-            SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
-        /*	and nuke the image data	*/
-        FreeImageData(img);
-    }
-    /*	continue?	*/
-    if (tex_id) {
-        /*	1st face: try to load the image	*/
-        img = LoadImage(y_neg_file, &width, &height, &channels, force_channels);
-        /*	channels holds the original number of channels, which may have
-         * been forced	*/
-        if ((force_channels >= 1) && (force_channels <= 4)) {
-            channels = force_channels;
-        }
-        if (NULL == img) {
-            /*	image loading failed	*/
-            last_result_description = stbi_failure_reason();
-            return std::nullopt;
-        }
-        /*	upload the texture, but reuse the assigned texture ID	*/
-        tex_id = CreateOglTextureInternal(
-            img, width, height, channels, tex_id.value(), flags,
-            SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-            SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
-        /*	and nuke the image data	*/
-        FreeImageData(img);
-    }
-    /*	continue?	*/
-    if (tex_id) {
-        /*	1st face: try to load the image	*/
-        img = LoadImage(z_pos_file, &width, &height, &channels, force_channels);
-        /*	channels holds the original number of channels, which may have
-         * been forced	*/
-        if ((force_channels >= 1) && (force_channels <= 4)) {
-            channels = force_channels;
-        }
-        if (NULL == img) {
-            /*	image loading failed	*/
-            last_result_description = stbi_failure_reason();
-            return std::nullopt;
-        }
-        /*	upload the texture, but reuse the assigned texture ID	*/
-        tex_id = CreateOglTextureInternal(
-            img, width, height, channels, tex_id.value(), flags,
-            SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-            SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
-        /*	and nuke the image data	*/
-        FreeImageData(img);
-    }
-    /*	continue?	*/
-    if (tex_id) {
-        /*	1st face: try to load the image	*/
-        img = LoadImage(z_neg_file, &width, &height, &channels, force_channels);
-        /*	channels holds the original number of channels, which may have
-         * been forced	*/
-        if ((force_channels >= 1) && (force_channels <= 4)) {
-            channels = force_channels;
-        }
-        if (NULL == img) {
-            /*	image loading failed	*/
-            last_result_description = stbi_failure_reason();
-            return std::nullopt;
-        }
-        /*	upload the texture, but reuse the assigned texture ID	*/
-        tex_id = CreateOglTextureInternal(
-            img, width, height, channels, tex_id.value(), flags,
-            SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
-            SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
-        /*	and nuke the image data	*/
-        FreeImageData(img);
-    }
-    /*	and return the handle, such as it is	*/
+    //	and return the handle, such as it is
     return tex_id;
 }
 
 std::optional<uint32_t> LoadOglCubemapFromMemory(
-    const unsigned char *const x_pos_buffer, int x_pos_buffer_length,
-    const unsigned char *const x_neg_buffer, int x_neg_buffer_length,
-    const unsigned char *const y_pos_buffer, int y_pos_buffer_length,
-    const unsigned char *const y_neg_buffer, int y_neg_buffer_length,
-    const unsigned char *const z_pos_buffer, int z_pos_buffer_length,
-    const unsigned char *const z_neg_buffer, int z_neg_buffer_length,
-    int force_channels, unsigned int reuse_texture_ID, unsigned int flags) {
-    /*	variables	*/
-    unsigned char *img;
-    int width, height, channels;
+    const std::vector<uint8_t> &x_pos_buffer,
+    const std::vector<uint8_t> &x_neg_buffer,
+    const std::vector<uint8_t> &y_pos_buffer,
+    const std::vector<uint8_t> &y_neg_buffer,
+    const std::vector<uint8_t> &z_pos_buffer,
+    const std::vector<uint8_t> &z_neg_buffer, ImageChannels force_channels,
+    unsigned int reuse_texture_ID, unsigned int flags) {
+    uint8_t *img;
+    int width, height;
+    ImageChannels channels;
     std::optional<uint32_t> tex_id;
-    /*	error checking	*/
-    if ((x_pos_buffer == NULL) || (x_neg_buffer == NULL) ||
-        (y_pos_buffer == NULL) || (y_neg_buffer == NULL) ||
-        (z_pos_buffer == NULL) || (z_neg_buffer == NULL)) {
-        last_result_description = "Invalid cube map buffers list";
-        return std::nullopt;
-    }
-    /*	capability checking	*/
+    const std::pair<const std::vector<uint8_t> &, uint32_t> buffers_array[] = {
+        {x_pos_buffer, SOIL_TEXTURE_CUBE_MAP_POSITIVE_X},
+        {x_neg_buffer, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_X},
+        {y_pos_buffer, SOIL_TEXTURE_CUBE_MAP_POSITIVE_Y},
+        {y_neg_buffer, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Y},
+        {z_pos_buffer, SOIL_TEXTURE_CUBE_MAP_POSITIVE_Z},
+        {z_neg_buffer, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Z},
+    };
+    //	capability checking
     if (GetCubemapCapability() != LoadCapability::kPresent) {
         last_result_description = "No cube map capability present";
         return std::nullopt;
     }
-    /*	1st face: try to load the image	*/
-    img = LoadImageFromMemory(x_pos_buffer, x_pos_buffer_length, &width,
-                              &height, &channels, force_channels);
-    /*	channels holds the original number of channels, which may have been
-     * forced	*/
-    if ((force_channels >= 1) && (force_channels <= 4)) {
-        channels = force_channels;
-    }
-    if (NULL == img) {
-        /*	image loading failed	*/
-        last_result_description = stbi_failure_reason();
-        return std::nullopt;
-    }
-    /*	upload the texture, and create a texture ID if necessary	*/
-    tex_id = CreateOglTextureInternal(
-        img, width, height, channels, reuse_texture_ID, flags,
-        SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_POSITIVE_X,
-        SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
-    /*	and nuke the image data	*/
-    FreeImageData(img);
-    /*	continue?	*/
-    if (tex_id) {
+    for (const auto &buffer_pair : buffers_array) {
+        const auto &buffer = buffer_pair.first;
+        const auto direction = buffer_pair.second;
         /*	1st face: try to load the image	*/
-        img = LoadImageFromMemory(x_neg_buffer, x_neg_buffer_length, &width,
-                                  &height, &channels, force_channels);
-        /*	channels holds the original number of channels, which may have
-         * been forced	*/
-        if ((force_channels >= 1) && (force_channels <= 4)) {
+        img = LoadImageFromMemory(buffer.data(), buffer.size(), &width, &height,
+                                  channels, force_channels);
+        //	channels holds the original number of channels, which may have
+        // been forced
+        if (force_channels != ImageChannels::kAuto) {
             channels = force_channels;
         }
-        if (NULL == img) {
-            /*	image loading failed	*/
+        if (nullptr == img) {
+            //	image loading failed
             last_result_description = stbi_failure_reason();
             return std::nullopt;
         }
-        /*	upload the texture, but reuse the assigned texture ID	*/
+        //	upload the texture, and create a texture ID if necessary
         tex_id = CreateOglTextureInternal(
-            img, width, height, channels, tex_id.value(), flags,
-            SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_X,
-            SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
-        /*	and nuke the image data	*/
+            img, width, height, channels, reuse_texture_ID, flags,
+            SOIL_TEXTURE_CUBE_MAP, direction, SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
+        //	and nuke the image data
         FreeImageData(img);
-    }
-    /*	continue?	*/
-    if (tex_id) {
-        /*	1st face: try to load the image	*/
-        img = LoadImageFromMemory(y_pos_buffer, y_pos_buffer_length, &width,
-                                  &height, &channels, force_channels);
-        /*	channels holds the original number of channels, which may have
-         * been forced	*/
-        if ((force_channels >= 1) && (force_channels <= 4)) {
-            channels = force_channels;
-        }
-        if (NULL == img) {
-            /*	image loading failed	*/
-            last_result_description = stbi_failure_reason();
+        //	continue?
+        if (!tex_id) {
             return std::nullopt;
         }
-        /*	upload the texture, but reuse the assigned texture ID	*/
-        tex_id = CreateOglTextureInternal(
-            img, width, height, channels, tex_id.value(), flags,
-            SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_POSITIVE_Y,
-            SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
-        /*	and nuke the image data	*/
-        FreeImageData(img);
     }
-    /*	continue?	*/
-    if (tex_id) {
-        /*	1st face: try to load the image	*/
-        img = LoadImageFromMemory(y_neg_buffer, y_neg_buffer_length, &width,
-                                  &height, &channels, force_channels);
-        /*	channels holds the original number of channels, which may have
-         * been forced	*/
-        if ((force_channels >= 1) && (force_channels <= 4)) {
-            channels = force_channels;
-        }
-        if (NULL == img) {
-            /*	image loading failed	*/
-            last_result_description = stbi_failure_reason();
-            return std::nullopt;
-        }
-        /*	upload the texture, but reuse the assigned texture ID	*/
-        tex_id = CreateOglTextureInternal(
-            img, width, height, channels, tex_id.value(), flags,
-            SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-            SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
-        /*	and nuke the image data	*/
-        FreeImageData(img);
-    }
-    /*	continue?	*/
-    if (tex_id) {
-        /*	1st face: try to load the image	*/
-        img = LoadImageFromMemory(z_pos_buffer, z_pos_buffer_length, &width,
-                                  &height, &channels, force_channels);
-        /*	channels holds the original number of channels, which may have
-         * been forced	*/
-        if ((force_channels >= 1) && (force_channels <= 4)) {
-            channels = force_channels;
-        }
-        if (NULL == img) {
-            /*	image loading failed	*/
-            last_result_description = stbi_failure_reason();
-            return std::nullopt;
-        }
-        /*	upload the texture, but reuse the assigned texture ID	*/
-        tex_id = CreateOglTextureInternal(
-            img, width, height, channels, tex_id.value(), flags,
-            SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-            SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
-        /*	and nuke the image data	*/
-        FreeImageData(img);
-    }
-    /*	continue?	*/
-    if (tex_id) {
-        /*	1st face: try to load the image	*/
-        img = LoadImageFromMemory(z_neg_buffer, z_neg_buffer_length, &width,
-                                  &height, &channels, force_channels);
-        /*	channels holds the original number of channels, which may have
-         * been forced	*/
-        if ((force_channels >= 1) && (force_channels <= 4)) {
-            channels = force_channels;
-        }
-        if (NULL == img) {
-            /*	image loading failed	*/
-            last_result_description = stbi_failure_reason();
-            return std::nullopt;
-        }
-        /*	upload the texture, but reuse the assigned texture ID	*/
-        tex_id = CreateOglTextureInternal(
-            img, width, height, channels, tex_id.value(), flags,
-            SOIL_TEXTURE_CUBE_MAP, SOIL_TEXTURE_CUBE_MAP_NEGATIVE_Z,
-            SOIL_MAX_CUBE_MAP_TEXTURE_SIZE);
-        /*	and nuke the image data	*/
-        FreeImageData(img);
-    }
-    /*	and return the handle, such as it is	*/
+    //	and return the handle, such as it is
     return tex_id;
 }
 
 std::optional<uint32_t> LoadOglSingleCubemap(const char *filename,
                                              const char face_order[6],
-                                             int force_channels,
+                                             ImageChannels force_channels,
                                              unsigned int reuse_texture_ID,
                                              unsigned int flags) {
     /*	variables	*/
-    unsigned char *img;
-    int width, height, channels, i;
+    uint8_t *img;
+    int width, height, i;
+    ImageChannels channels;
     std::optional<uint32_t> tex_id = std::nullopt;
     /*	error checking	*/
     if (filename == NULL) {
@@ -562,10 +367,10 @@ std::optional<uint32_t> LoadOglSingleCubemap(const char *filename,
         return std::nullopt;
     }
     /*	1st off, try to load the full image	*/
-    img = LoadImage(filename, &width, &height, &channels, force_channels);
+    img = LoadImage(filename, &width, &height, channels, force_channels);
     /*	channels holds the original number of channels, which may have been
      * forced	*/
-    if ((force_channels >= 1) && (force_channels <= 4)) {
+    if (force_channels != ImageChannels::kAuto) {
         channels = force_channels;
     }
     if (NULL == img) {
@@ -588,12 +393,13 @@ std::optional<uint32_t> LoadOglSingleCubemap(const char *filename,
 }
 
 std::optional<uint32_t> LoadOglSingleCubemapFromMemory(
-    const unsigned char *const buffer, int buffer_length,
-    const char face_order[6], int force_channels, unsigned int reuse_texture_ID,
+    const uint8_t *const buffer, int buffer_length, const char face_order[6],
+    ImageChannels force_channels, unsigned int reuse_texture_ID,
     unsigned int flags) {
     /*	variables	*/
-    unsigned char *img;
-    int width, height, channels, i;
+    uint8_t *img;
+    int width, height, i;
+    ImageChannels channels;
     std::optional<uint32_t> tex_id = std::nullopt;
     /*	error checking	*/
     if (buffer == NULL) {
@@ -628,11 +434,11 @@ std::optional<uint32_t> LoadOglSingleCubemapFromMemory(
         return std::nullopt;
     }
     /*	1st off, try to load the full image	*/
-    img = LoadImageFromMemory(buffer, buffer_length, &width, &height, &channels,
+    img = LoadImageFromMemory(buffer, buffer_length, &width, &height, channels,
                               force_channels);
     /*	channels holds the original number of channels, which may have been
      * forced	*/
-    if ((force_channels >= 1) && (force_channels <= 4)) {
+    if (force_channels != ImageChannels::kAuto) {
         channels = force_channels;
     }
     if (NULL == img) {
@@ -652,18 +458,19 @@ std::optional<uint32_t> LoadOglSingleCubemapFromMemory(
     /*	nuke the temporary image data and return the texture handle	*/
     FreeImageData(img);
     return tex_id;
-}
+}  // namespace soil
 
-std::optional<uint32_t> CreateOglSingleCubemap(const unsigned char *const data,
+std::optional<uint32_t> CreateOglSingleCubemap(const uint8_t *const data,
                                                int width, int height,
-                                               int channels,
+                                               ImageChannels channels,
                                                const char face_order[6],
                                                unsigned int reuse_texture_ID,
                                                unsigned int flags) {
     /*	variables	*/
-    unsigned char *sub_img;
+    uint8_t *sub_img;
     int dw, dh, sz, i;
     std::optional<uint32_t> tex_id;
+    int channels_count = static_cast<int>(channels);
     /*	error checking	*/
     if (data == NULL) {
         last_result_description = "Invalid single cube map image data";
@@ -697,7 +504,7 @@ std::optional<uint32_t> CreateOglSingleCubemap(const unsigned char *const data,
         dh = width;
     }
     sz = dw + dh;
-    sub_img = (unsigned char *)malloc(sz * sz * channels);
+    sub_img = (uint8_t *)malloc(sz * sz * channels_count);
     /*	do the splitting and uploading	*/
     tex_id = reuse_texture_ID;
     for (i = 0; i < 6; ++i) {
@@ -705,8 +512,9 @@ std::optional<uint32_t> CreateOglSingleCubemap(const unsigned char *const data,
         unsigned int cubemap_target = 0;
         /*	copy in the sub-image	*/
         for (y = i * dh; y < i * dh + sz; ++y) {
-            for (x = i * dw * channels; x < (i * dw + sz) * channels; ++x) {
-                sub_img[idx++] = data[y * width * channels + x];
+            for (x = i * dw * channels_count;
+                 x < (i * dw + sz) * channels_count; ++x) {
+                sub_img[idx++] = data[y * width * channels_count + x];
             }
         }
         /*	what is my texture target?
@@ -744,8 +552,8 @@ std::optional<uint32_t> CreateOglSingleCubemap(const unsigned char *const data,
     return tex_id;
 }
 
-std::optional<uint32_t> CreateOglTexture(const unsigned char *const data,
-                                         int width, int height, int channels,
+std::optional<uint32_t> CreateOglTexture(const uint8_t *const data, int width,
+                                         int height, ImageChannels channels,
                                          unsigned int reuse_texture_ID,
                                          unsigned int flags) {
     /*	wrapper function for 2D textures	*/
@@ -770,15 +578,16 @@ void check_for_GL_errors(const char *calling_location) {
 #endif
 
 std::optional<uint32_t> CreateOglTextureInternal(
-    const unsigned char *const data, int width, int height, int channels,
+    const uint8_t *const data, int width, int height, ImageChannels channels,
     unsigned int reuse_texture_ID, unsigned int flags,
     unsigned int opengl_texture_type, unsigned int opengl_texture_target,
     unsigned int texture_check_size_enum) {
-    unsigned char *img;
+    uint8_t *img;
     std::optional<uint32_t> tex_id;
     unsigned int internal_texture_format = 0, original_texture_format = 0;
     int DXT_mode = LoadCapability::kUnknown;
     int max_supported_size;
+    int channels_count = static_cast<int>(channels);
     //	If the user wants to use the texture rectangle I kill a few flags
     if (flags & Flags::kTextureRectangle) {
         //	well, the user asked for it, can we do that?
@@ -805,16 +614,16 @@ std::optional<uint32_t> CreateOglTextureInternal(
         }
     }
     //	create a copy the image data
-    img = (unsigned char *)malloc(width * height * channels);
-    memcpy(img, data, width * height * channels);
+    img = (uint8_t *)malloc(width * height * channels_count);
+    memcpy(img, data, width * height * channels_count);
     //	does the user want me to invert the image?
     if (flags & Flags::kInvertY) {
         int i, j;
         for (j = 0; j * 2 < height; ++j) {
-            int index1 = j * width * channels;
-            int index2 = (height - 1 - j) * width * channels;
-            for (i = width * channels; i > 0; --i) {
-                unsigned char temp = img[index1];
+            int index1 = j * width * channels_count;
+            int index2 = (height - 1 - j) * width * channels_count;
+            for (i = width * channels_count; i > 0; --i) {
+                uint8_t temp = img[index1];
                 img[index1] = img[index2];
                 img[index2] = temp;
                 ++index1;
@@ -824,13 +633,13 @@ std::optional<uint32_t> CreateOglTextureInternal(
     }
     //	does the user want me to scale the colors into the NTSC safe RGB range?
     if (flags & Flags::kNtscSafeRgb) {
-        scale_image_RGB_to_NTSC_safe(img, width, height, channels);
+        scale_image_RGB_to_NTSC_safe(img, width, height, channels_count);
     }
     //	does the user want me to convert from straight to pre-multiplied alpha?
     //(and do we even _have_ alpha?)
     if (flags & Flags::kMultiplyAlpha) {
         int i;
-        switch (channels) {
+        switch (channels_count) {
             case 2:
                 for (i = 0; i < 2 * width * height; i += 2) {
                     img[i] = (img[i] * img[i + 1] + 128) >> 8;
@@ -878,10 +687,10 @@ std::optional<uint32_t> CreateOglTextureInternal(
         /*	still?	*/
         if ((new_width != width) || (new_height != height)) {
             /*	yep, resize	*/
-            unsigned char *resampled =
-                (unsigned char *)malloc(channels * new_width * new_height);
-            up_scale_image(img, width, height, channels, resampled, new_width,
-                           new_height);
+            uint8_t *resampled =
+                (uint8_t *)malloc(channels_count * new_width * new_height);
+            up_scale_image(img, width, height, channels_count, resampled,
+                           new_width, new_height);
             /*	OJO	this is for debug only!	*/
             /*
             SaveImage( "\\showme.bmp", SaveTypes::kBmp,
@@ -899,7 +708,7 @@ std::optional<uint32_t> CreateOglTextureInternal(
     if ((width > max_supported_size) || (height > max_supported_size)) {
         /*	I've already made it a power of two, so simply use the
            MIPmapping code to reduce its size to the allowable maximum.	*/
-        unsigned char *resampled;
+        uint8_t *resampled;
         int reduce_block_x = 1, reduce_block_y = 1;
         int new_width, new_height;
         if (width > max_supported_size) {
@@ -910,10 +719,10 @@ std::optional<uint32_t> CreateOglTextureInternal(
         }
         new_width = width / reduce_block_x;
         new_height = height / reduce_block_y;
-        resampled = (unsigned char *)malloc(channels * new_width * new_height);
+        resampled = (uint8_t *)malloc(channels_count * new_width * new_height);
         /*	perform the actual reduction	*/
-        mipmap_image(img, width, height, channels, resampled, reduce_block_x,
-                     reduce_block_y);
+        mipmap_image(img, width, height, channels_count, resampled,
+                     reduce_block_x, reduce_block_y);
         /*	nuke the old guy, then point it at the new guy	*/
         FreeImageData(img);
         img = resampled;
@@ -923,7 +732,7 @@ std::optional<uint32_t> CreateOglTextureInternal(
     /*	does the user want us to use YCoCg color space?	*/
     if (flags & Flags::kCoCgY) {
         /*	this will only work with RGB and RGBA images */
-        convert_RGB_to_YCoCg(img, width, height, channels);
+        convert_RGB_to_YCoCg(img, width, height, channels_count);
         /*
         save_image_as_DDS( "kCoCgY.dds", width, height, channels, img );
         */
@@ -939,7 +748,7 @@ std::optional<uint32_t> CreateOglTextureInternal(
     if (tex_id) {
         /*	and what type am I using as the internal texture format?
          */
-        switch (channels) {
+        switch (channels_count) {
             case 1:
                 original_texture_format = GL_LUMINANCE;
                 break;
@@ -960,7 +769,7 @@ std::optional<uint32_t> CreateOglTextureInternal(
             if (DXT_mode == LoadCapability::kPresent) {
                 /*	I can use DXT, whether I compress it or OpenGL does
                  */
-                if ((channels & 1) == 1) {
+                if ((channels_count & 1) == 1) {
                     /*	1 or 3 channels = DXT1	*/
                     internal_texture_format = SOIL_RGB_S3TC_DXT1;
                 } else {
@@ -976,15 +785,15 @@ std::optional<uint32_t> CreateOglTextureInternal(
         if (DXT_mode == LoadCapability::kPresent) {
             /*	user wants me to do the DXT conversion!	*/
             int DDS_size;
-            unsigned char *DDS_data = NULL;
-            if ((channels & 1) == 1) {
+            uint8_t *DDS_data = NULL;
+            if ((channels_count & 1) == 1) {
                 /*	RGB, use DXT1	*/
-                DDS_data = convert_image_to_DXT1(img, width, height, channels,
-                                                 &DDS_size);
+                DDS_data = convert_image_to_DXT1(img, width, height,
+                                                 channels_count, &DDS_size);
             } else {
                 /*	RGBA, use DXT5	*/
-                DDS_data = convert_image_to_DXT5(img, width, height, channels,
-                                                 &DDS_size);
+                DDS_data = convert_image_to_DXT5(img, width, height,
+                                                 channels_count, &DDS_size);
             }
             if (DDS_data) {
                 glCompressedTexImage2DARB(opengl_texture_target, 0,
@@ -1015,27 +824,27 @@ std::optional<uint32_t> CreateOglTextureInternal(
             int MIPlevel = 1;
             int MIPwidth = (width + 1) / 2;
             int MIPheight = (height + 1) / 2;
-            unsigned char *resampled =
-                (unsigned char *)malloc(channels * MIPwidth * MIPheight);
+            uint8_t *resampled =
+                (uint8_t *)malloc(channels_count * MIPwidth * MIPheight);
             while (((1 << MIPlevel) <= width) || ((1 << MIPlevel) <= height)) {
                 /*	do this MIPmap level	*/
-                mipmap_image(img, width, height, channels, resampled,
+                mipmap_image(img, width, height, channels_count, resampled,
                              (1 << MIPlevel), (1 << MIPlevel));
                 /*  upload the MIPmaps	*/
                 if (DXT_mode == LoadCapability::kPresent) {
                     /*	user wants me to do the DXT conversion!	*/
                     int DDS_size;
-                    unsigned char *DDS_data = NULL;
-                    if ((channels & 1) == 1) {
+                    uint8_t *DDS_data = NULL;
+                    if ((channels_count & 1) == 1) {
                         /*	RGB, use DXT1	*/
-                        DDS_data = convert_image_to_DXT1(resampled, MIPwidth,
-                                                         MIPheight, channels,
-                                                         &DDS_size);
+                        DDS_data = convert_image_to_DXT1(
+                            resampled, MIPwidth, MIPheight, channels_count,
+                            &DDS_size);
                     } else {
                         /*	RGBA, use DXT5	*/
-                        DDS_data = convert_image_to_DXT5(resampled, MIPwidth,
-                                                         MIPheight, channels,
-                                                         &DDS_size);
+                        DDS_data = convert_image_to_DXT5(
+                            resampled, MIPwidth, MIPheight, channels_count,
+                            &DDS_size);
                     }
                     if (DDS_data) {
                         glCompressedTexImage2DARB(
@@ -1119,9 +928,9 @@ std::optional<uint32_t> CreateOglTextureInternal(
     return tex_id;
 }
 
-bool SaveScreenshot(const char *filename, int image_type, int x, int y,
+bool SaveScreenshot(std::string filename, int image_type, int x, int y,
                     int width, int height) {
-    unsigned char *pixel_data;
+    uint8_t *pixel_data;
     int i, j;
     bool save_result;
 
@@ -1134,13 +943,9 @@ bool SaveScreenshot(const char *filename, int image_type, int x, int y,
         last_result_description = "Invalid screenshot location";
         return false;
     }
-    if (filename == NULL) {
-        last_result_description = "Invalid screenshot filename";
-        return false;
-    }
 
     /*  Get the data from OpenGL	*/
-    pixel_data = (unsigned char *)malloc(3 * width * height);
+    pixel_data = (uint8_t *)malloc(3 * width * height);
     glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixel_data);
 
     /*	invert the image	*/
@@ -1148,7 +953,7 @@ bool SaveScreenshot(const char *filename, int image_type, int x, int y,
         int index1 = j * width * 3;
         int index2 = (height - 1 - j) * width * 3;
         for (i = width * 3; i > 0; --i) {
-            unsigned char temp = pixel_data[index1];
+            uint8_t temp = pixel_data[index1];
             pixel_data[index1] = pixel_data[index2];
             pixel_data[index2] = temp;
             ++index1;
@@ -1157,56 +962,62 @@ bool SaveScreenshot(const char *filename, int image_type, int x, int y,
     }
 
     /*	save the image	*/
-    save_result = SaveImage(filename, image_type, width, height, 3, pixel_data);
+    save_result = SaveImage(filename, image_type, width, height,
+                            ImageChannels::kRgb, pixel_data);
 
     /*  And free the memory	*/
     FreeImageData(pixel_data);
     return save_result;
 }
 
-unsigned char *LoadImage(const char *filename, int *width, int *height,
-                         int *channels, int force_channels) {
-    unsigned char *result =
-        stbi_load(filename, width, height, channels, force_channels);
-    if (result == NULL) {
+uint8_t *LoadImage(std::string filename, int *width, int *height,
+                   ImageChannels &channels, ImageChannels force_channels) {
+    int int_channels = static_cast<int>(channels);
+    uint8_t *result = stbi_load(filename.c_str(), width, height, &int_channels,
+                                static_cast<int>(force_channels));
+    if (result == nullptr) {
         last_result_description = stbi_failure_reason();
     } else {
         last_result_description = "Image loaded";
     }
+    channels = static_cast<ImageChannels>(int_channels);
     return result;
 }
 
-unsigned char *LoadImageFromMemory(const unsigned char *const buffer,
-                                   int buffer_length, int *width, int *height,
-                                   int *channels, int force_channels) {
-    unsigned char *result = stbi_load_from_memory(
-        buffer, buffer_length, width, height, channels, force_channels);
+uint8_t *LoadImageFromMemory(const uint8_t *const buffer, int buffer_length,
+                             int *width, int *height, ImageChannels &channels,
+                             ImageChannels force_channels) {
+    int int_channels = static_cast<int>(channels);
+    uint8_t *result =
+        stbi_load_from_memory(buffer, buffer_length, width, height,
+                              &int_channels, static_cast<int>(force_channels));
     if (result == NULL) {
         last_result_description = stbi_failure_reason();
     } else {
         last_result_description = "Image loaded from memory";
     }
+    channels = static_cast<ImageChannels>(int_channels);
     return result;
 }
 
-bool SaveImage(const char *filename, int image_type, int width, int height,
-               int channels, const unsigned char *const data) {
+bool SaveImage(std::string filename, int image_type, int width, int height,
+               int channels, const uint8_t *const data) {
     bool save_result;
 
     /*	error check	*/
     if ((width < 1) || (height < 1) || (channels < 1) || (channels > 4) ||
-        (data == NULL) || (filename == NULL)) {
+        (data == NULL)) {
         return false;
     }
     if (image_type == SaveTypes::kBmp) {
-        save_result =
-            stbi_write_bmp(filename, width, height, channels, (void *)data);
+        save_result = stbi_write_bmp(filename.c_str(), width, height, channels,
+                                     (void *)data);
     } else if (image_type == SaveTypes::kTga) {
-        save_result =
-            stbi_write_tga(filename, width, height, channels, (void *)data);
+        save_result = stbi_write_tga(filename.c_str(), width, height, channels,
+                                     (void *)data);
     } else if (image_type == SaveTypes::kDds) {
-        save_result = save_image_as_DDS(filename, width, height, channels,
-                                        (const unsigned char *const)data);
+        save_result = save_image_as_DDS(filename.c_str(), width, height,
+                                        channels, (const uint8_t *const)data);
     } else {
         save_result = false;
     }
@@ -1218,20 +1029,22 @@ bool SaveImage(const char *filename, int image_type, int width, int height,
     return save_result;
 }
 
-void FreeImageData(unsigned char *img_data) { free((void *)img_data); }
+void FreeImageData(uint8_t *img_data) { free((void *)img_data); }
 
 std::string GetLastResult(void) { return last_result_description; }
 
-std::optional<uint32_t> DirectLoadDdsFromMemory(
-    const unsigned char *const buffer, int buffer_length,
-    unsigned int reuse_texture_ID, int flags, int loading_as_cubemap) {
+std::optional<uint32_t> DirectLoadDdsFromMemory(const uint8_t *const buffer,
+                                                int buffer_length,
+                                                unsigned int reuse_texture_ID,
+                                                int flags,
+                                                bool loading_as_cubemap) {
     //	variables
     DDS_header header;
     unsigned int buffer_index = 0;
     std::optional<uint32_t> tex_ID{std::nullopt};
     //	file reading variables
     unsigned int S3TC_type = 0;
-    unsigned char *DDS_data;
+    uint8_t *DDS_data;
     unsigned int DDS_main_size;
     unsigned int DDS_full_size;
     unsigned int width, height;
@@ -1392,7 +1205,7 @@ std::optional<uint32_t> DirectLoadDdsFromMemory(
         mipmaps = 0;
         DDS_full_size = DDS_main_size;
     }
-    DDS_data = (unsigned char *)malloc(DDS_full_size);
+    DDS_data = (uint8_t *)malloc(DDS_full_size);
     //	got the image data RAM, create or use an existing OpenGL texture handle
     tex_ID = reuse_texture_ID;
     if (tex_ID == 0) {
@@ -1413,7 +1226,7 @@ std::optional<uint32_t> DirectLoadDdsFromMemory(
                 //	and remember, DXT uncompressed uses BGR(A),so swap to
                 // RGB(A) for ALL MIPmap levels
                 for (i = 0; i < DDS_full_size; i += block_size) {
-                    unsigned char temp = DDS_data[i];
+                    uint8_t temp = DDS_data[i];
                     DDS_data[i] = DDS_data[i + 2];
                     DDS_data[i + 2] = temp;
                 }
@@ -1494,19 +1307,19 @@ quick_exit:
     return tex_ID;
 }
 
-std::optional<uint32_t> DirectLoadDds(const char *filename,
+std::optional<uint32_t> DirectLoadDds(std::string filename,
                                       unsigned int reuse_texture_ID, int flags,
-                                      int loading_as_cubemap) {
+                                      bool loading_as_cubemap) {
     FILE *f;
-    unsigned char *buffer;
+    uint8_t *buffer;
     size_t buffer_length, bytes_read;
     std::optional<uint32_t> tex_ID{std::nullopt};
     //	error checks
-    if (NULL == filename) {
+    if (!std::filesystem::exists(filename)) {
         last_result_description = "NULL filename";
         return std::nullopt;
     }
-    f = fopen(filename, "rb");
+    f = fopen(filename.c_str(), "rb");
     if (NULL == f) {
         //	the file doesn't seem to exist (or be open-able)
         last_result_description = "Can not find DDS file";
@@ -1515,7 +1328,7 @@ std::optional<uint32_t> DirectLoadDds(const char *filename,
     fseek(f, 0, SEEK_END);
     buffer_length = ftell(f);
     fseek(f, 0, SEEK_SET);
-    buffer = (unsigned char *)malloc(buffer_length);
+    buffer = (uint8_t *)malloc(buffer_length);
     if (NULL == buffer) {
         last_result_description = "malloc failed";
         fclose(f);
@@ -1528,9 +1341,9 @@ std::optional<uint32_t> DirectLoadDds(const char *filename,
         buffer_length = bytes_read;
     }
     //	now try to do the loading
-    tex_ID = DirectLoadDdsFromMemory((const unsigned char *const)buffer,
-                                     buffer_length, reuse_texture_ID, flags,
-                                     loading_as_cubemap);
+    tex_ID =
+        DirectLoadDdsFromMemory((const uint8_t *const)buffer, buffer_length,
+                                reuse_texture_ID, flags, loading_as_cubemap);
     FreeImageData(buffer);
     return tex_ID;
 }
