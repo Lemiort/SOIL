@@ -278,7 +278,7 @@ float find_max_RGBE(unsigned char* image, int width, int height) {
 }
 
 int RGBE_to_RGBdivA(unsigned char* image, int width, int height,
-                    int rescale_to_max) {
+                    bool rescale_to_max) {
     /* local variables */
     int i, iv;
     unsigned char* img = image;
@@ -318,7 +318,7 @@ int RGBE_to_RGBdivA(unsigned char* image, int width, int height,
 }
 
 int RGBE_to_RGBdivA2(unsigned char* image, int width, int height,
-                     int rescale_to_max) {
+                     bool rescale_to_max) {
     /* local variables */
     int i, iv;
     unsigned char* img = image;

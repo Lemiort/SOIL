@@ -125,7 +125,7 @@ enum class HdrTypes {
  * texture ID (overwriting the old texture)
  * @param flags can be any of kPowerOfTwo | kMipMaps | kTextureRepeats |
  * kMultiplyAlpha | kInvertY | kCompressToDxt | kDdsLoadDirect
- * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
+ * @return uint32_t 0-failed, otherwise returns the OpenGL texture handle
  */
 std::optional<uint32_t> LoadOglTexture(const std::string &filename,
                                        ImageChannels force_channels,
@@ -146,14 +146,13 @@ std::optional<uint32_t> LoadOglTexture(const std::string &filename,
  * @param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the
  * texture ID (overwriting the old texture)
  * @param flags can be any of soil::Flags
- * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
+ * @return uint32_t 0-failed, otherwise returns the OpenGL texture handle
  */
 std::optional<uint32_t> LoadOglCubemap(
     const std::string &x_pos_file, const std::string &x_neg_file,
     const std::string &y_pos_file, const std::string &y_neg_file,
     const std::string &z_pos_file, const std::string &z_neg_file,
-    ImageChannels force_channels, unsigned int reuse_texture_ID,
-    unsigned int flags);
+    ImageChannels force_channels, uint32_t reuse_texture_ID, uint32_t flags);
 
 /**
  * @brief Loads 1 image from disk and splits it into an OpenGL cubemap texture.
@@ -166,13 +165,13 @@ std::optional<uint32_t> LoadOglCubemap(
  * @param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the
  * texture ID (overwriting the old texture)
  * @param flags can be any of soil::Flags
- * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
+ * @return uint32_t 0-failed, otherwise returns the OpenGL texture handle
  */
 std::optional<uint32_t> LoadOglSingleCubemap(const std::string &filename,
                                              const char face_order[6],
                                              ImageChannels force_channels,
-                                             unsigned int reuse_texture_ID,
-                                             unsigned int flags);
+                                             uint32_t reuse_texture_ID,
+                                             uint32_t flags);
 
 /**
  * @brief Loads an HDR image from disk into an OpenGL texture.
@@ -183,13 +182,13 @@ std::optional<uint32_t> LoadOglSingleCubemap(const std::string &filename,
  * @param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the
  * texture ID (overwriting the old texture)
  * @param flags can be any of soil::Flags
- * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
+ * @return uint32_t 0-failed, otherwise returns the OpenGL texture handle
  */
 std::optional<uint32_t> LoadOglHdrTexture(const std::string &filename,
                                           HdrTypes fake_HDR_format,
-                                          int rescale_to_max,
-                                          unsigned int reuse_texture_ID,
-                                          unsigned int flags);
+                                          bool rescale_to_max,
+                                          uint32_t reuse_texture_ID,
+                                          uint32_t flags);
 
 /**
  * @brief Loads an image from RAM into an OpenGL texture.
@@ -201,11 +200,11 @@ std::optional<uint32_t> LoadOglHdrTexture(const std::string &filename,
  * @param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the
  * texture ID (overwriting the old texture)
  * @param flags can be any of soil::Flags
- * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
+ * @return uint32_t 0-failed, otherwise returns the OpenGL texture handle
  */
 std::optional<uint32_t> LoadOglTextureFromMemory(
-    const std::vector<uint8_t> &buffer, int force_channels,
-    unsigned int reuse_texture_ID, unsigned int flags);
+    const std::vector<uint8_t> &buffer, ImageChannels force_channels,
+    uint32_t reuse_texture_ID, uint32_t flags);
 
 /**
  * @brief Loads 6 images from memory into an OpenGL cubemap texture.
@@ -227,7 +226,7 @@ std::optional<uint32_t> LoadOglTextureFromMemory(
  * @param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the
  * texture ID (overwriting the old texture)
  * @param flags can be any of soil::Flags
- * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
+ * @return uint32_t 0-failed, otherwise returns the OpenGL texture handle
  */
 std::optional<uint32_t> LoadOglCubemapFromMemory(
     const std::vector<uint8_t> &x_pos_buffer,
@@ -236,7 +235,7 @@ std::optional<uint32_t> LoadOglCubemapFromMemory(
     const std::vector<uint8_t> &y_neg_buffer,
     const std::vector<uint8_t> &z_pos_buffer,
     const std::vector<uint8_t> &z_neg_buffer, ImageChannels force_channels,
-    unsigned int reuse_texture_ID, unsigned int flags);
+    uint32_t reuse_texture_ID, uint32_t flags);
 
 /**
  * @brief Loads 1 image from RAM and splits it into an OpenGL cubemap texture.
@@ -250,12 +249,11 @@ std::optional<uint32_t> LoadOglCubemapFromMemory(
  * @param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the
  * texture ID (overwriting the old texture)
  * @param flags can be any of soil::Flags
- * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
+ * @return uint32_t 0-failed, otherwise returns the OpenGL texture handle
  */
 std::optional<uint32_t> LoadOglSingleCubemapFromMemory(
     const std::vector<uint8_t> &buffer, const char face_order[6],
-    ImageChannels force_channels, unsigned int reuse_texture_ID,
-    unsigned int flags);
+    ImageChannels force_channels, uint32_t reuse_texture_ID, uint32_t flags);
 
 /**
  * @brief Creates a 2D OpenGL texture from raw image data.
@@ -271,12 +269,12 @@ std::optional<uint32_t> LoadOglSingleCubemapFromMemory(
  * @param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the
  * texture ID (overwriting the old texture)
  * @param flags can be any of soil::Flags
- * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
+ * @return uint32_t 0-failed, otherwise returns the OpenGL texture handle
  */
 std::optional<uint32_t> CreateOglTexture(const uint8_t *const data, int width,
                                          int height, ImageChannels channels,
-                                         unsigned int reuse_texture_ID,
-                                         unsigned int flags);
+                                         uint32_t reuse_texture_ID,
+                                         uint32_t flags);
 
 /**
  * @brief Creates an OpenGL cubemap texture by splitting up 1 image into 6
@@ -292,14 +290,11 @@ std::optional<uint32_t> CreateOglTexture(const uint8_t *const data, int width,
  * @param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the
  * texture ID (overwriting the old texture)
  * @param flags can be any of soil::Flags
- * @return unsigned int 0-failed, otherwise returns the OpenGL texture handle
+ * @return uint32_t 0-failed, otherwise returns the OpenGL texture handle
  */
-std::optional<uint32_t> CreateOglSingleCubemap(const uint8_t *const data,
-                                               int width, int height,
-                                               ImageChannels channels,
-                                               const char face_order[6],
-                                               unsigned int reuse_texture_ID,
-                                               unsigned int flags);
+std::optional<uint32_t> CreateOglSingleCubemap(
+    const uint8_t *const data, int width, int height, ImageChannels channels,
+    const char face_order[6], uint32_t reuse_texture_ID, uint32_t flags);
 
 /**
  * @brief Captures the OpenGL window (RGB) and saves it to disk

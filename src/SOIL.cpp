@@ -322,7 +322,7 @@ std::optional<uint32_t> DirectLoadDdsFromMemory(
     for (cf_target = ogl_target_start; cf_target <= ogl_target_end;
          ++cf_target) {
         if (buffer_index + DDS_full_size <= buffer.size()) {
-            unsigned int byte_offset = DDS_main_size;
+            uint32_t byte_offset = DDS_main_size;
             std::vector<uint8_t> DDS_data{
                 &buffer[buffer_index], &buffer[buffer_index + DDS_full_size]};
             buffer_index += DDS_full_size;
@@ -398,8 +398,8 @@ std::optional<uint32_t> DirectLoadDdsFromMemory(
             glTexParameteri(opengl_texture_type, SOIL_TEXTURE_WRAP_R,
                             GL_REPEAT);
         } else {
-            //	unsigned int clamp_mode = SOIL_CLAMP_TO_EDGE;
-            unsigned int clamp_mode = GL_CLAMP;
+            //	uint32_t clamp_mode = SOIL_CLAMP_TO_EDGE;
+            uint32_t clamp_mode = GL_CLAMP;
             glTexParameteri(opengl_texture_type, GL_TEXTURE_WRAP_S, clamp_mode);
             glTexParameteri(opengl_texture_type, GL_TEXTURE_WRAP_T, clamp_mode);
             glTexParameteri(opengl_texture_type, SOIL_TEXTURE_WRAP_R,
@@ -442,12 +442,11 @@ std::optional<uint32_t> DirectLoadDds(const std::string &filename,
 
 std::optional<uint32_t> CreateOglTextureInternal(
     const uint8_t *const data, int width, int height, ImageChannels channels,
-    unsigned int reuse_texture_ID, unsigned int flags,
-    unsigned int opengl_texture_type, unsigned int opengl_texture_target,
-    unsigned int texture_check_size_enum) {
+    uint32_t reuse_texture_ID, uint32_t flags, uint32_t opengl_texture_type,
+    uint32_t opengl_texture_target, uint32_t texture_check_size_enum) {
     uint8_t *img;
     std::optional<uint32_t> tex_id;
-    unsigned int internal_texture_format = 0, original_texture_format = 0;
+    uint32_t internal_texture_format = 0, original_texture_format = 0;
     LoadCapability DXT_mode = LoadCapability::kUnknown;
     int max_supported_size;
     int channels_count = static_cast<int>(channels);
@@ -766,8 +765,8 @@ std::optional<uint32_t> CreateOglTextureInternal(
             }
             check_for_GL_errors("GL_TEXTURE_WRAP_*");
         } else {
-            /*	unsigned int clamp_mode = SOIL_CLAMP_TO_EDGE;	*/
-            unsigned int clamp_mode = GL_CLAMP;
+            /*	uint32_t clamp_mode = SOIL_CLAMP_TO_EDGE;	*/
+            uint32_t clamp_mode = GL_CLAMP;
             glTexParameteri(opengl_texture_type, GL_TEXTURE_WRAP_S, clamp_mode);
             glTexParameteri(opengl_texture_type, GL_TEXTURE_WRAP_T, clamp_mode);
             if (opengl_texture_type == SOIL_TEXTURE_CUBE_MAP) {
@@ -837,9 +836,9 @@ std::optional<uint32_t> LoadOglTexture(const std::string &filename,
 
 std::optional<uint32_t> LoadOglHdrTexture(const std::string &filename,
                                           HdrTypes fake_HDR_format,
-                                          int rescale_to_max,
-                                          unsigned int reuse_texture_ID,
-                                          unsigned int flags) {
+                                          bool rescale_to_max,
+                                          uint32_t reuse_texture_ID,
+                                          uint32_t flags) {
     uint8_t *img;
     int width, height, channels;
     std::optional<uint32_t> tex_id;
@@ -879,7 +878,7 @@ std::optional<uint32_t> LoadOglHdrTexture(const std::string &filename,
 
 std::optional<uint32_t> LoadOglTextureFromMemory(
     const std::vector<uint8_t> &buffer, ImageChannels force_channels,
-    unsigned int reuse_texture_ID, unsigned int flags) {
+    uint32_t reuse_texture_ID, uint32_t flags) {
     uint8_t *img;
     int width, height;
     ImageChannels channels;
@@ -923,8 +922,7 @@ std::optional<uint32_t> LoadOglCubemap(
     const std::string &x_pos_file, const std::string &x_neg_file,
     const std::string &y_pos_file, const std::string &y_neg_file,
     const std::string &z_pos_file, const std::string &z_neg_file,
-    ImageChannels force_channels, unsigned int reuse_texture_ID,
-    unsigned int flags) {
+    ImageChannels force_channels, uint32_t reuse_texture_ID, uint32_t flags) {
     uint8_t *img;
     int width, height;
     ImageChannels channels;
@@ -983,7 +981,7 @@ std::optional<uint32_t> LoadOglCubemapFromMemory(
     const std::vector<uint8_t> &y_neg_buffer,
     const std::vector<uint8_t> &z_pos_buffer,
     const std::vector<uint8_t> &z_neg_buffer, ImageChannels force_channels,
-    unsigned int reuse_texture_ID, unsigned int flags) {
+    uint32_t reuse_texture_ID, uint32_t flags) {
     uint8_t *img;
     int width, height;
     ImageChannels channels;
@@ -1035,8 +1033,8 @@ std::optional<uint32_t> LoadOglCubemapFromMemory(
 std::optional<uint32_t> LoadOglSingleCubemap(const std::string &filename,
                                              const char face_order[6],
                                              ImageChannels force_channels,
-                                             unsigned int reuse_texture_ID,
-                                             unsigned int flags) {
+                                             uint32_t reuse_texture_ID,
+                                             uint32_t flags) {
     constexpr char avaliable_chars[] = {'N', 'S', 'W', 'E', 'U', 'D'};
     uint8_t *img;
     int width, height, i;
@@ -1101,8 +1099,7 @@ std::optional<uint32_t> LoadOglSingleCubemap(const std::string &filename,
 
 std::optional<uint32_t> LoadOglSingleCubemapFromMemory(
     const std::vector<uint8_t> &buffer, const char face_order[6],
-    ImageChannels force_channels, unsigned int reuse_texture_ID,
-    unsigned int flags) {
+    ImageChannels force_channels, uint32_t reuse_texture_ID, uint32_t flags) {
     uint8_t *img;
     int width, height, i;
     ImageChannels channels;
@@ -1160,12 +1157,9 @@ std::optional<uint32_t> LoadOglSingleCubemapFromMemory(
     return tex_id;
 }  // namespace soil
 
-std::optional<uint32_t> CreateOglSingleCubemap(const uint8_t *const data,
-                                               int width, int height,
-                                               ImageChannels channels,
-                                               const char face_order[6],
-                                               unsigned int reuse_texture_ID,
-                                               unsigned int flags) {
+std::optional<uint32_t> CreateOglSingleCubemap(
+    const uint8_t *const data, int width, int height, ImageChannels channels,
+    const char face_order[6], uint32_t reuse_texture_ID, uint32_t flags) {
     /*	variables	*/
     uint8_t *sub_img;
     int dw, dh, sz, i;
@@ -1209,7 +1203,7 @@ std::optional<uint32_t> CreateOglSingleCubemap(const uint8_t *const data,
     tex_id = reuse_texture_ID;
     for (i = 0; i < 6; ++i) {
         int x, y, idx = 0;
-        unsigned int cubemap_target = 0;
+        uint32_t cubemap_target = 0;
         /*	copy in the sub-image	*/
         for (y = i * dh; y < i * dh + sz; ++y) {
             for (x = i * dw * channels_count;
@@ -1254,8 +1248,8 @@ std::optional<uint32_t> CreateOglSingleCubemap(const uint8_t *const data,
 
 std::optional<uint32_t> CreateOglTexture(const uint8_t *const data, int width,
                                          int height, ImageChannels channels,
-                                         unsigned int reuse_texture_ID,
-                                         unsigned int flags) {
+                                         uint32_t reuse_texture_ID,
+                                         uint32_t flags) {
     /*	wrapper function for 2D textures	*/
     return CreateOglTextureInternal(data, width, height, channels,
                                     reuse_texture_ID, flags, GL_TEXTURE_2D,
