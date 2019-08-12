@@ -1,14 +1,32 @@
 cmake_minimum_required(VERSION 3.13.3)
-set(PROJECT_NAME "SOIL")
+set(PROJECT_NAME "soilcpp")
 
 project(${PROJECT_NAME} CXX)
 
-
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
-include(build/conanbuildinfo.cmake)
-conan_basic_setup()
-
+if (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/conanbuildinfo.cmake)
+  include(${CMAKE_CURRENT_BINARY_DIR}/conanbuildinfo.cmake)
+  conan_basic_setup()
+else()
+  if (NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+  endif()
+  if (CONAN_PROFILE)
+    set(CONANPROFILE PROFILE ${CONAN_PROFILE})
+  endif()
+  if(NOT EXISTS "${CMAKE_BINARY_DIR}/conan.cmake")
+     message(STATUS "Downloading conan.cmake from https://github.com/conan-io/cmake-conan")
+     file(DOWNLOAD "https://github.com/conan-io/cmake-conan/raw/v0.14/conan.cmake"
+                   "${CMAKE_BINARY_DIR}/conan.cmake")
+  endif()
+  include(${CMAKE_BINARY_DIR}/conan.cmake)
+  conan_cmake_run(
+    CONANFILE conanfile.py
+    BASIC_SETUP
+    ${CONANPROFILE}
+  )
+endif()
 
 find_package("GLEW")
 if(GLEW_FOUND)

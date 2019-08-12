@@ -1,11 +1,7 @@
-# SOIL
-Simple Opengl Image Library
+# SOIL-CPP
 
-Repository for good one old library. [SOIL author notes](SOIL.md)
+## The modern C++ version of Simple Opengl Image Library
 
-## Changes 
-- Test file was removed beacuse it was for Windows only
-- Original stb files was removed
-- Added cmake support
-- Makefile removed
-- Test images was removed
+[SOIL author notes](SOIL.md)
+
+[License](LICENSE.md)
