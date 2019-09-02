@@ -34,3 +34,5 @@
 # build artefacts
 build/*
 .vscode/*
+test_package/build/*
+test_package/.vscode/*

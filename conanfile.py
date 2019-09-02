@@ -32,7 +32,7 @@ class SoilConan(ConanFile):
         # self.run("cmake --build . %s" % cmake.build_config)
 
     def package(self):
-        self.copy("*SOIL.hpp", dst="include/SOIL", src="soil", keep_path=False)
+        self.copy("*SOIL.hpp", dst="include/SOIL", src="src", keep_path=False)
         self.copy("*soilcpp.lib", dst="lib", keep_path=False)
         self.copy("*.dll", dst="bin", keep_path=False)
         self.copy("*.so", dst="lib", keep_path=False)

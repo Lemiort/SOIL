@@ -48,6 +48,26 @@ patching some explicit casts
 
 namespace soil {
 
+namespace constants {
+
+/**
+ * @brief Passed in as reuse_texture_ID, will cause SOIL to register a new
+ * texture ID using glGenTextures(). If the value passed into reuse_texture_ID >
+ * 0 then SOIL will just re-use that texture ID (great for reloading image
+ * assets in-game!)
+ */
+constexpr uint32_t kCreateNewId = 0;
+
+/**
+        Defines the order of faces in a DDS cubemap.
+        I recommend that you use the same order in single
+        image cubemap files, so they will be interchangeable
+        with DDS cubemaps when using SOIL.
+**/
+constexpr char kDdsCubemapFaceOrder[]{"EWUDNS"};
+
+}  // namespace constants
+
 /**
  * @brief The format of images that may be loaded (force_channels).
  */
@@ -60,20 +80,12 @@ enum class ImageChannels : int32_t {
 };
 
 /**
- * @brief Passed in as reuse_texture_ID, will cause SOIL to register a new
- * texture ID using glGenTextures(). If the value passed into reuse_texture_ID >
- * 0 then SOIL will just re-use that texture ID (great for reloading image
- * assets in-game!)
- */
-constexpr uint8_t kSoilCreateNewId = 0;
-
-/**
  * @brief flags you can pass into LoadOglTexture() and CreateOglTexture().
  *
  * @note  if kDdsLoadDirect is used the rest of the flags with the exception of
  * kTextureRepeats will be ignored while loading already-compressed DDS files.
  */
-enum Flags {
+enum Flags : uint32_t {
     kPowerOfTwo = 1,      /// force the image to be POT
     kMipMaps = 2,         /// generate mipmaps for the texture
     kTextureRepeats = 4,  /// otherwise will clamp
@@ -97,14 +109,6 @@ enum class SaveTypes {
     kBmp = 1,  /// (BMP supports uncompressed RGB)
     kDds = 2   /// (DDS supports DXT1 and DXT5)
 };
-
-/**
-        Defines the order of faces in a DDS cubemap.
-        I recommend that you use the same order in single
-        image cubemap files, so they will be interchangeable
-        with DDS cubemaps when using SOIL.
-**/
-#define SOIL_DDS_CUBEMAP_FACE_ORDER "EWUDNS"
 
 /**
  * @brief The types of internal fake HDR representations
