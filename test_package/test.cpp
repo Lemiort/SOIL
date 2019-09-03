@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <iostream>
 #include <string>
 
@@ -59,7 +60,7 @@ int main() {
         // load_me = "img_test_uncompressed.dds";
         // load_me = "img_test_indexed.tga";
         // load_me = "img_test.dds";
-        load_me = "img_test.png";
+        load_me = "../images/img_test.png";
         // load_me = "odd_size.jpg";
         // load_me = "img_cheryl.jpg";
         // load_me = "oak_odd.png";
@@ -76,29 +77,32 @@ int main() {
         // load_me = "test_rect.png";
     }
     std::cout << "'" << load_me << "'" << std::endl;
+    if (!std::filesystem::exists(load_me)) {
+        std::cout << "The file dosn't exist in "
+                  << std::filesystem::current_path() << std::endl;
+    }
 
     //	1st try to load it as a single-image-cubemap
     //	(note, need DDS ordered faces: "EWUDNS")
-    GLuint tex_ID;
+    std::optional<GLuint> tex_ID;
     int time_me;
 
     std::cout << "Attempting to load as a cubemap" << std::endl;
     time_me = clock();
     tex_ID = soil::LoadOglSingleCubemap(
-                 load_me, soil::constants::kDdsCubemapFaceOrder,
-                 soil::ImageChannels::kAuto, soil::constants::kCreateNewId,
-                 soil::Flags::kPowerOfTwo |
-                     soil::Flags::kMipMaps
-                     //| SOIL_FLAG_COMPRESS_TO_DXT
-                     //| SOIL_FLAG_TEXTURE_REPEATS
-                     //| SOIL_FLAG_INVERT_Y
-                     | soil::Flags::kDdsLoadDirect)
-                 .value();
+        load_me, soil::constants::kDdsCubemapFaceOrder,
+        soil::ImageChannels::kAuto, soil::constants::kCreateNewId,
+        soil::Flags::kPowerOfTwo |
+            soil::Flags::kMipMaps
+            //| SOIL_FLAG_COMPRESS_TO_DXT
+            //| SOIL_FLAG_TEXTURE_REPEATS
+            //| SOIL_FLAG_INVERT_Y
+            | soil::Flags::kDdsLoadDirect);
 
     time_me = clock() - time_me;
     std::cout << "the load time was " << 0.001f * time_me
               << " seconds (warning: low resolution timer)" << std::endl;
-    if (tex_ID > 0) {
+    if (tex_ID) {
         glEnable(GL_TEXTURE_CUBE_MAP);
         glEnable(GL_TEXTURE_GEN_S);
         glEnable(GL_TEXTURE_GEN_T);
@@ -106,31 +110,29 @@ int main() {
         glTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
         glTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
         glTexGeni(GL_R, GL_TEXTURE_GEN_MODE, GL_REFLECTION_MAP);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, tex_ID);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, tex_ID.value());
         //	report
-        std::cout << "the loaded single cube map ID was " << tex_ID
+        std::cout << "the loaded single cube map ID was " << tex_ID.value()
                   << std::endl;
         // std::cout << "the load time was " << 0.001f * time_me << " seconds
         // (warning: low resolution timer)" << std::endl;
     } else {
         std::cout << "Attempting to load as a HDR texture" << std::endl;
         time_me = clock();
-        tex_ID =
-            soil::LoadOglHdrTexture(
-                load_me,
-                // SOIL_HDR_RGBE,
-                // SOIL_HDR_RGBdivA,
-                soil::HdrTypes::kRgbDivA2, 0, soil::constants::kCreateNewId,
-                soil::Flags::kPowerOfTwo | soil::Flags::kMipMaps
-                //| SOIL_FLAG_COMPRESS_TO_DXT
-                )
-                .value();
+        tex_ID = soil::LoadOglHdrTexture(
+            load_me,
+            // SOIL_HDR_RGBE,
+            // SOIL_HDR_RGBdivA,
+            soil::HdrTypes::kRgbDivA2, 0, soil::constants::kCreateNewId,
+            soil::Flags::kPowerOfTwo | soil::Flags::kMipMaps
+            //| SOIL_FLAG_COMPRESS_TO_DXT
+        );
         time_me = clock() - time_me;
         std::cout << "the load time was " << 0.001f * time_me
                   << " seconds (warning: low resolution timer)" << std::endl;
 
         //	did I fail?
-        if (tex_ID < 1) {
+        if (!tex_ID) {
             //	loading of the single-image-cubemap failed, try it as a simple
             // texture
             std::cout << "Attempting to load as a simple 2D texture"
@@ -147,22 +149,22 @@ int main() {
                                           //| SOIL_FLAG_NTSC_SAFE_RGB
                                           //| SOIL_FLAG_CoCg_Y
                                           //| SOIL_FLAG_TEXTURE_RECTANGLE
-                                          )
-                         .value();
+            );
             time_me = clock() - time_me;
             std::cout << "the load time was " << 0.001f * time_me
                       << " seconds (warning: low resolution timer)"
                       << std::endl;
         }
 
-        if (tex_ID > 0) {
+        if (tex_ID) {
             //	enable texturing
             glEnable(GL_TEXTURE_2D);
             // glEnable( 0x84F5 );// enables texture rectangle
             //  bind an OpenGL texture ID
-            glBindTexture(GL_TEXTURE_2D, tex_ID);
+            glBindTexture(GL_TEXTURE_2D, tex_ID.value());
             //	report
-            std::cout << "the loaded texture ID was " << tex_ID << std::endl;
+            std::cout << "the loaded texture ID was " << tex_ID.value()
+                      << std::endl;
             // std::cout << "the load time was " << 0.001f * time_me << "
             // seconds (warning: low resolution timer)" << std::endl;
         } else {
