@@ -1329,23 +1329,24 @@ uint8_t *LoadImageFromMemory(const std::vector<uint8_t> &buffer, int *width,
 }
 
 bool SaveImage(const std::string &filename, SaveTypes image_type, int width,
-               int height, int channels, const uint8_t *const data) {
+               int height, ImageChannels channels, const uint8_t *const data) {
     bool save_result;
 
     /*	error check	*/
-    if ((width < 1) || (height < 1) || (channels < 1) || (channels > 4) ||
-        (data == NULL)) {
+    if ((width < 1) || (height < 1) || (static_cast<int>(channels) < 1) ||
+        (static_cast<int>(channels) > 4) || (data == NULL)) {
         return false;
     }
     if (image_type == SaveTypes::kBmp) {
-        save_result = stbi_write_bmp(filename.c_str(), width, height, channels,
-                                     (void *)data);
+        save_result = stbi_write_bmp(filename.c_str(), width, height,
+                                     static_cast<int>(channels), (void *)data);
     } else if (image_type == SaveTypes::kTga) {
-        save_result = stbi_write_tga(filename.c_str(), width, height, channels,
-                                     (void *)data);
+        save_result = stbi_write_tga(filename.c_str(), width, height,
+                                     static_cast<int>(channels), (void *)data);
     } else if (image_type == SaveTypes::kDds) {
         save_result = save_image_as_DDS(filename.c_str(), width, height,
-                                        channels, (const uint8_t *const)data);
+                                        static_cast<int>(channels),
+                                        (const uint8_t *const)data);
     } else {
         save_result = false;
     }

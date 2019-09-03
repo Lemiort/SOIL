@@ -62,7 +62,7 @@ int convert_YCoCg_to_RGB(unsigned char* orig, int width, int height,
         \return 0 if failed, otherwise returns 1
 **/
 int RGBE_to_RGBdivA(unsigned char* image, int width, int height,
-                    int rescale_to_max);
+                    bool rescale_to_max);
 
 /**
         Converts an HDR image from an array
@@ -70,6 +70,6 @@ int RGBE_to_RGBdivA(unsigned char* image, int width, int height,
         \return 0 if failed, otherwise returns 1
 **/
 int RGBE_to_RGBdivA2(unsigned char* image, int width, int height,
-                     int rescale_to_max);
+                     bool rescale_to_max);
 
 #endif /* HEADER_IMAGE_HELPER	*/
