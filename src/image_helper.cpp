@@ -13,16 +13,15 @@
 namespace soil::internal {
 
 /*	Upscaling the image uses simple bilinear interpolation	*/
-int UpscaleImage(const unsigned char* const orig, int width, int height,
-                 int channels, unsigned char* resampled, int resampled_width,
-                 int resampled_height) {
+int UpscaleImage(const std::vector<uint8_t>& orig, int width, int height,
+                 int channels, std::vector<uint8_t>& resampled,
+                 int resampled_width, int resampled_height) {
     float dx, dy;
     int x, y, c;
 
     /* error(s) check	*/
     if ((width < 1) || (height < 1) || (resampled_width < 2) ||
-        (resampled_height < 2) || (channels < 1) || (NULL == orig) ||
-        (NULL == resampled)) {
+        (resampled_height < 2) || (channels < 1)) {
         /*	signify badness	*/
         return 0;
     }
@@ -75,15 +74,15 @@ int UpscaleImage(const unsigned char* const orig, int width, int height,
     return 1;
 }
 
-int MipmapImage(const unsigned char* const orig, int width, int height,
-                int channels, unsigned char* resampled, int block_size_x,
+int MipmapImage(const std::vector<uint8_t>& orig, int width, int height,
+                int channels, std::vector<uint8_t>& resampled, int block_size_x,
                 int block_size_y) {
     int mip_width, mip_height;
     int i, j, c;
 
     /*	error check	*/
-    if ((width < 1) || (height < 1) || (channels < 1) || (orig == NULL) ||
-        (resampled == NULL) || (block_size_x < 1) || (block_size_y < 1)) {
+    if ((width < 1) || (height < 1) || (channels < 1) || (block_size_x < 1) ||
+        (block_size_y < 1)) {
         /*	nothing to do	*/
         return 0;
     }
@@ -171,12 +170,11 @@ unsigned char clamp_byte(int x) {
         while 4 components will be ordered CoCgAY (for DXT5
         compression).
 */
-int ConvertRgbToYcocg(unsigned char* orig, int width, int height,
+int ConvertRgbToYcocg(std::vector<uint8_t>& orig, int width, int height,
                       int channels) {
     int i;
     /*	error check	*/
-    if ((width < 1) || (height < 1) || (channels < 3) || (channels > 4) ||
-        (orig == NULL)) {
+    if ((width < 1) || (height < 1) || (channels < 3) || (channels > 4)) {
         /*	nothing to do	*/
         return -1;
     }

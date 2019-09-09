@@ -9,6 +9,9 @@
 #ifndef HEADER_IMAGE_HELPER
 #define HEADER_IMAGE_HELPER
 
+#include <cstdint>
+#include <vector>
+
 namespace soil::internal {
 
 /**
@@ -17,9 +20,9 @@ namespace soil::internal {
         but to make it square,
         or to make it a power-of-two sized.
 **/
-int UpscaleImage(const unsigned char* const orig, int width, int height,
-                 int channels, unsigned char* resampled, int resampled_width,
-                 int resampled_height);
+int UpscaleImage(const std::vector<uint8_t>& orig, int width, int height,
+                 int channels, std::vector<uint8_t>& resampled,
+                 int resampled_width, int resampled_height);
 
 /**
         This function downscales an image.
@@ -27,8 +30,8 @@ int UpscaleImage(const unsigned char* const orig, int width, int height,
         the incoming image should be a
         power-of-two sized.
 **/
-int MipmapImage(const unsigned char* const orig, int width, int height,
-                int channels, unsigned char* resampled, int block_size_x,
+int MipmapImage(const std::vector<uint8_t>& orig, int width, int height,
+                int channels, std::vector<uint8_t>& resampled, int block_size_x,
                 int block_size_y);
 
 /**
@@ -48,7 +51,8 @@ int ScaleImageRgbToNtscSafe(unsigned char* orig, int width, int height,
         while 4 components will be ordered CoCgAY (for DXT5
         compression).
 **/
-int ConvertRgbToYcocg(unsigned char* orig, int width, int height, int channels);
+int ConvertRgbToYcocg(std::vector<uint8_t>& orig, int width, int height,
+                      int channels);
 
 /**
         This function takes the YCoCg components of the image

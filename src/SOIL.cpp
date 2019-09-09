@@ -454,7 +454,6 @@ std::optional<uint32_t> CreateOglTextureInternal(
     const uint8_t *const data, int width, int height, ImageChannels channels,
     uint32_t reuse_texture_ID, uint32_t flags, uint32_t opengl_texture_type,
     uint32_t opengl_texture_target, uint32_t texture_check_size_enum) {
-    uint8_t *img;
     std::optional<uint32_t> tex_id;
     LoadCapability DXT_mode = LoadCapability::kUnknown;
     int max_supported_size;
@@ -485,8 +484,9 @@ std::optional<uint32_t> CreateOglTextureInternal(
         }
     }
     //	create a copy the image data
-    img = (uint8_t *)malloc(width * height * channels_count);
-    memcpy(img, data, width * height * channels_count);
+    std::vector<uint8_t> img;
+    img.reserve(width * height * channels_count);
+    memcpy(img.data(), data, width * height * channels_count);
     //	does the user want me to invert the image?
     if (flags & Flags::kInvertY) {
         int i, j;
@@ -504,7 +504,7 @@ std::optional<uint32_t> CreateOglTextureInternal(
     }
     //	does the user want me to scale the colors into the NTSC safe RGB range?
     if (flags & Flags::kNtscSafeRgb) {
-        ScaleImageRgbToNtscSafe(img, width, height, channels_count);
+        ScaleImageRgbToNtscSafe(img.data(), width, height, channels_count);
     }
     //	does the user want me to convert from straight to pre-multiplied alpha?
     //(and do we even _have_ alpha?)
@@ -558,13 +558,12 @@ std::optional<uint32_t> CreateOglTextureInternal(
         /*	still?	*/
         if ((new_width != width) || (new_height != height)) {
             /*	yep, resize	*/
-            uint8_t *resampled =
-                (uint8_t *)malloc(channels_count * new_width * new_height);
+            std::vector<uint8_t> resampled;
+            resampled.reserve(channels_count * new_width * new_height);
             UpscaleImage(img, width, height, channels_count, resampled,
                          new_width, new_height);
             /*	nuke the old guy, then point it at the new guy	*/
-            FreeImageData(img);
-            img = resampled;
+            img = std::move(resampled);
             width = new_width;
             height = new_height;
         }
@@ -573,7 +572,7 @@ std::optional<uint32_t> CreateOglTextureInternal(
     if ((width > max_supported_size) || (height > max_supported_size)) {
         /*	I've already made it a power of two, so simply use the
            MIPmapping code to reduce its size to the allowable maximum.	*/
-        uint8_t *resampled;
+        std::vector<uint8_t> resampled;
         int reduce_block_x = 1, reduce_block_y = 1;
         int new_width, new_height;
         if (width > max_supported_size) {
@@ -584,13 +583,12 @@ std::optional<uint32_t> CreateOglTextureInternal(
         }
         new_width = width / reduce_block_x;
         new_height = height / reduce_block_y;
-        resampled = (uint8_t *)malloc(channels_count * new_width * new_height);
+        resampled.reserve(channels_count * new_width * new_height);
         /*	perform the actual reduction	*/
         MipmapImage(img, width, height, channels_count, resampled,
                     reduce_block_x, reduce_block_y);
         /*	nuke the old guy, then point it at the new guy	*/
-        FreeImageData(img);
-        img = resampled;
+        img = std::move(resampled);
         width = new_width;
         height = new_height;
     }
@@ -649,30 +647,29 @@ std::optional<uint32_t> CreateOglTextureInternal(
         /*  upload the main image	*/
         if (DXT_mode == LoadCapability::kPresent) {
             /*	user wants me to do the DXT conversion!	*/
-            int DDS_size;
-            uint8_t *DDS_data = NULL;
+            std::vector<uint8_t> DDS_data;
             if ((channels_count & 1) == 1) {
                 /*	RGB, use DXT1	*/
-                DDS_data = ConvertImageToDxt1(img, width, height,
-                                              channels_count, &DDS_size);
+                DDS_data =
+                    ConvertImageToDxt1(img, width, height, channels_count);
             } else {
                 /*	RGBA, use DXT5	*/
-                DDS_data = ConvertImageToDxt5(img, width, height,
-                                              channels_count, &DDS_size);
+                DDS_data =
+                    ConvertImageToDxt5(img, width, height, channels_count);
             }
-            if (DDS_data) {
-                glCompressedTexImage2DARB(opengl_texture_target, 0,
-                                          internal_texture_format, width,
-                                          height, 0, DDS_size, DDS_data);
+            if (DDS_data.size() > 0) {
+                glCompressedTexImage2DARB(
+                    opengl_texture_target, 0, internal_texture_format, width,
+                    height, 0, DDS_data.size(), DDS_data.data());
                 check_for_GL_errors("glCompressedTexImage2D");
-                FreeImageData(DDS_data);
                 /*	printf( "Internal DXT compressor\n" );	*/
             } else {
                 /*	my compression failed, try the OpenGL driver's version
                  */
                 glTexImage2D(opengl_texture_target, 0, internal_texture_format,
                              width, height, 0, original_texture_format,
-                             GL_UNSIGNED_BYTE, img);
+                             GL_UNSIGNED_BYTE,
+                             static_cast<const void *>(img.data()));
                 check_for_GL_errors("glTexImage2D");
                 /*	printf( "OpenGL DXT compressor\n" );	*/
             }
@@ -680,7 +677,8 @@ std::optional<uint32_t> CreateOglTextureInternal(
             /*	user want OpenGL to do all the work!	*/
             glTexImage2D(opengl_texture_target, 0, internal_texture_format,
                          width, height, 0, original_texture_format,
-                         GL_UNSIGNED_BYTE, img);
+                         GL_UNSIGNED_BYTE,
+                         static_cast<const void *>(img.data()));
             check_for_GL_errors("glTexImage2D");
             /*printf( "OpenGL DXT compressor\n" );	*/
         }
@@ -689,8 +687,8 @@ std::optional<uint32_t> CreateOglTextureInternal(
             int MIPlevel = 1;
             int MIPwidth = (width + 1) / 2;
             int MIPheight = (height + 1) / 2;
-            uint8_t *resampled =
-                (uint8_t *)malloc(channels_count * MIPwidth * MIPheight);
+            std::vector<uint8_t> resampled;
+            resampled.reserve(channels_count * MIPwidth * MIPheight);
             while (((1 << MIPlevel) <= width) || ((1 << MIPlevel) <= height)) {
                 /*	do this MIPmap level	*/
                 MipmapImage(img, width, height, channels_count, resampled,
@@ -698,33 +696,31 @@ std::optional<uint32_t> CreateOglTextureInternal(
                 /*  upload the MIPmaps	*/
                 if (DXT_mode == LoadCapability::kPresent) {
                     /*	user wants me to do the DXT conversion!	*/
-                    int DDS_size;
-                    uint8_t *DDS_data = NULL;
+                    std::vector<uint8_t> DDS_data;
                     if ((channels_count & 1) == 1) {
                         /*	RGB, use DXT1	*/
-                        DDS_data =
-                            ConvertImageToDxt1(resampled, MIPwidth, MIPheight,
-                                               channels_count, &DDS_size);
+                        DDS_data = std::move(ConvertImageToDxt1(
+                            resampled, MIPwidth, MIPheight, channels_count));
                     } else {
                         /*	RGBA, use DXT5	*/
-                        DDS_data =
-                            ConvertImageToDxt5(resampled, MIPwidth, MIPheight,
-                                               channels_count, &DDS_size);
+                        DDS_data = std::move(ConvertImageToDxt5(
+                            resampled, MIPwidth, MIPheight, channels_count));
                     }
-                    if (DDS_data) {
+                    if (DDS_data.size() > 0) {
                         glCompressedTexImage2DARB(
                             opengl_texture_target, MIPlevel,
                             internal_texture_format, MIPwidth, MIPheight, 0,
-                            DDS_size, DDS_data);
+                            DDS_data.size(),
+                            static_cast<const void *>(DDS_data.data()));
                         check_for_GL_errors("glCompressedTexImage2D");
-                        FreeImageData(DDS_data);
                     } else {
                         /*	my compression failed, try the OpenGL driver's
                          * version	*/
-                        glTexImage2D(opengl_texture_target, MIPlevel,
-                                     internal_texture_format, MIPwidth,
-                                     MIPheight, 0, original_texture_format,
-                                     GL_UNSIGNED_BYTE, resampled);
+                        glTexImage2D(
+                            opengl_texture_target, MIPlevel,
+                            internal_texture_format, MIPwidth, MIPheight, 0,
+                            original_texture_format, GL_UNSIGNED_BYTE,
+                            static_cast<const void *>(resampled.data()));
                         check_for_GL_errors("glTexImage2D");
                     }
                 } else {
@@ -732,7 +728,7 @@ std::optional<uint32_t> CreateOglTextureInternal(
                     glTexImage2D(opengl_texture_target, MIPlevel,
                                  internal_texture_format, MIPwidth, MIPheight,
                                  0, original_texture_format, GL_UNSIGNED_BYTE,
-                                 resampled);
+                                 static_cast<const void *>(resampled.data()));
                     check_for_GL_errors("glTexImage2D");
                 }
                 /*	prep for the next level	*/
@@ -740,7 +736,6 @@ std::optional<uint32_t> CreateOglTextureInternal(
                 MIPwidth = (MIPwidth + 1) / 2;
                 MIPheight = (MIPheight + 1) / 2;
             }
-            FreeImageData(resampled);
             /*	instruct OpenGL to use the MIPmaps	*/
             glTexParameteri(opengl_texture_type, GL_TEXTURE_MAG_FILTER,
                             GL_LINEAR);
@@ -789,7 +784,6 @@ std::optional<uint32_t> CreateOglTextureInternal(
             "Failed to generate an OpenGL texture name; missing OpenGL "
             "context?";
     }
-    FreeImageData(img);
     return tex_id;
 }
 }  // namespace
@@ -1263,7 +1257,6 @@ std::optional<uint32_t> CreateOglTexture(const uint8_t *const data, int width,
 
 bool SaveScreenshot(const std::string &filename, SaveTypes image_type, int x,
                     int y, int width, int height) {
-    uint8_t *pixel_data;
     int i, j;
     bool save_result;
 
@@ -1278,8 +1271,10 @@ bool SaveScreenshot(const std::string &filename, SaveTypes image_type, int x,
     }
 
     /*  Get the data from OpenGL	*/
-    pixel_data = (uint8_t *)malloc(3 * width * height);
-    glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixel_data);
+    std::vector<uint8_t> pixel_data;
+    pixel_data.reserve(3 * width * height);
+    glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE,
+                 static_cast<void *>(pixel_data.data()));
 
     /*	invert the image	*/
     for (j = 0; j * 2 < height; ++j) {
@@ -1297,9 +1292,6 @@ bool SaveScreenshot(const std::string &filename, SaveTypes image_type, int x,
     /*	save the image	*/
     save_result = SaveImage(filename, image_type, width, height,
                             ImageChannels::kRgb, pixel_data);
-
-    /*  And free the memory	*/
-    FreeImageData(pixel_data);
     return save_result;
 }
 
@@ -1334,24 +1326,26 @@ uint8_t *LoadImageFromMemory(const std::vector<uint8_t> &buffer, int *width,
 }
 
 bool SaveImage(const std::string &filename, SaveTypes image_type, int width,
-               int height, ImageChannels channels, const uint8_t *const data) {
+               int height, ImageChannels channels,
+               const std::vector<uint8_t> &data) {
     bool save_result;
 
     /*	error check	*/
     if ((width < 1) || (height < 1) || (static_cast<int>(channels) < 1) ||
-        (static_cast<int>(channels) > 4) || (data == NULL)) {
+        (static_cast<int>(channels) > 4)) {
         return false;
     }
     if (image_type == SaveTypes::kBmp) {
-        save_result = stbi_write_bmp(filename.c_str(), width, height,
-                                     static_cast<int>(channels), (void *)data);
+        save_result =
+            stbi_write_bmp(filename.c_str(), width, height,
+                           static_cast<int>(channels), (void *)data.data());
     } else if (image_type == SaveTypes::kTga) {
-        save_result = stbi_write_tga(filename.c_str(), width, height,
-                                     static_cast<int>(channels), (void *)data);
+        save_result =
+            stbi_write_tga(filename.c_str(), width, height,
+                           static_cast<int>(channels), (void *)data.data());
     } else if (image_type == SaveTypes::kDds) {
         save_result = SaveImageAsDds(filename.c_str(), width, height,
-                                     static_cast<int>(channels),
-                                     (const uint8_t *const)data);
+                                     static_cast<int>(channels), data);
     } else {
         save_result = false;
     }

@@ -12,10 +12,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fstream>
 
 namespace soil::internal {
 
-/*	set this =1 if you want to use the covarince matrix method...
+/*	set this =1 if you want to use the covariance matrix method...
         which is better than my method of using standard deviations
         overall, except on the infintesimal chance that the power
         method fails for finding the largest eigenvector	*/
@@ -39,25 +40,24 @@ void CompressDdsAlphaBlock(const unsigned char *const uncompressed,
                            unsigned char compressed[8]);
 
 /********* Actual Exposed Functions *********/
-int SaveImageAsDds(const char *filename, int width, int height, int channels,
-                   const unsigned char *const data) {
+int SaveImageAsDds(const std::filesystem::path &filename, int width, int height,
+                   int channels, const std::vector<uint8_t> &data) {
     /*	variables	*/
-    FILE *fout;
-    unsigned char *DDS_data;
+    std::vector<uint8_t> DDS_data;
     DDS_header header;
     int DDS_size;
     /*	error check	*/
-    if ((NULL == filename) || (width < 1) || (height < 1) || (channels < 1) ||
-        (channels > 4) || (data == NULL)) {
+    if ((!filename.has_filename()) || (width < 1) || (height < 1) ||
+        (channels < 1) || (channels > 4)) {
         return 0;
     }
     /*	Convert the image	*/
     if ((channels & 1) == 1) {
         /*	no alpha, just use DXT1	*/
-        DDS_data = ConvertImageToDxt1(data, width, height, channels, &DDS_size);
+        DDS_data = ConvertImageToDxt1(data, width, height, channels);
     } else {
         /*	has alpha, so use DXT5	*/
-        DDS_data = ConvertImageToDxt5(data, width, height, channels, &DDS_size);
+        DDS_data = ConvertImageToDxt5(data, width, height, channels);
     }
     /*	save it	*/
     memset(&header, 0, sizeof(DDS_header));
@@ -79,29 +79,26 @@ int SaveImageAsDds(const char *filename, int width, int height, int channels,
     }
     header.sCaps.dwCaps1 = DDSCAPS_TEXTURE;
     /*	write it out	*/
-    fout = fopen(filename, "wb");
-    fwrite(&header, sizeof(DDS_header), 1, fout);
-    fwrite(DDS_data, 1, DDS_size, fout);
-    fclose(fout);
-    /*	done	*/
-    free(DDS_data);
+    std::ofstream fout(filename, std::ios::binary);
+    fout.write(reinterpret_cast<const char *>(&header), sizeof(DDS_header));
+    fout.write(reinterpret_cast<const char *>(DDS_data.data()),
+               DDS_data.size());
+    fout.close();
     return 1;
 }
 
-unsigned char *ConvertImageToDxt1(const unsigned char *const uncompressed,
-                                  int width, int height, int channels,
-                                  int *out_size) {
-    unsigned char *compressed;
+std::vector<uint8_t> ConvertImageToDxt1(
+    const std::vector<uint8_t> &uncompressed, int width, int height,
+    int channels) {
+    std::vector<uint8_t> compressed;
     int i, j, x, y;
-    unsigned char ublock[16 * 3];
-    unsigned char cblock[8];
-    int index = 0, chan_step = 1;
+    uint8_t ublock[16 * 3];
+    uint8_t cblock[8];
+    size_t index = 0, chan_step = 1;
     int block_count = 0;
     /*	error check	*/
-    *out_size = 0;
-    if ((width < 1) || (height < 1) || (NULL == uncompressed) ||
-        (channels < 1) || (channels > 4)) {
-        return NULL;
+    if ((width < 1) || (height < 1) || (channels < 1) || (channels > 4)) {
+        return compressed;
     }
     /*	for channels == 1 or 2, I do not step forward for R,G,B values	*/
     if (channels < 3) {
@@ -109,8 +106,9 @@ unsigned char *ConvertImageToDxt1(const unsigned char *const uncompressed,
     }
     /*	get the RAM for the compressed image
             (8 bytes per 4x4 pixel block)	*/
-    *out_size = ((width + 3) >> 2) * ((height + 3) >> 2) * 8;
-    compressed = (unsigned char *)malloc(*out_size);
+    size_t out_size = ((width + 3) >> 2) * ((height + 3) >> 2) * 8;
+    compressed.reserve(out_size);
+
     /*	go through each block	*/
     for (j = 0; j < height; j += 4) {
         for (i = 0; i < width; i += 4) {
@@ -159,20 +157,18 @@ unsigned char *ConvertImageToDxt1(const unsigned char *const uncompressed,
     return compressed;
 }
 
-unsigned char *ConvertImageToDxt5(const unsigned char *const uncompressed,
-                                  int width, int height, int channels,
-                                  int *out_size) {
-    unsigned char *compressed;
+std::vector<uint8_t> ConvertImageToDxt5(
+    const std::vector<uint8_t> &uncompressed, int width, int height,
+    int channels) {
+    std::vector<uint8_t> compressed;
     int i, j, x, y;
     unsigned char ublock[16 * 4];
     unsigned char cblock[8];
     int index = 0, chan_step = 1;
     int block_count = 0, has_alpha;
     /*	error check	*/
-    *out_size = 0;
-    if ((width < 1) || (height < 1) || (NULL == uncompressed) ||
-        (channels < 1) || (channels > 4)) {
-        return NULL;
+    if ((width < 1) || (height < 1) || (channels < 1) || (channels > 4)) {
+        return compressed;
     }
     /*	for channels == 1 or 2, I do not step forward for R,G,B vales	*/
     if (channels < 3) {
@@ -182,8 +178,8 @@ unsigned char *ConvertImageToDxt5(const unsigned char *const uncompressed,
     has_alpha = 1 - (channels & 1);
     /*	get the RAM for the compressed image
             (16 bytes per 4x4 pixel block)	*/
-    *out_size = ((width + 3) >> 2) * ((height + 3) >> 2) * 16;
-    compressed = (unsigned char *)malloc(*out_size);
+    size_t out_size = ((width + 3) >> 2) * ((height + 3) >> 2) * 16;
+    compressed.reserve(out_size);
     /*	go through each block	*/
     for (j = 0; j < height; j += 4) {
         for (i = 0; i < width; i += 4) {

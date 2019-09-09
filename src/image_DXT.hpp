@@ -10,6 +10,9 @@
 #ifndef HEADER_IMAGE_DXT
 #define HEADER_IMAGE_DXT
 #include <cstdint>
+#include <filesystem>
+#include <string>
+#include <vector>
 
 namespace soil::internal {
 
@@ -18,22 +21,22 @@ namespace soil::internal {
         DXT1 or DXT5, then saves the converted image to disk.
         \return 0 if failed, otherwise returns 1
 **/
-int SaveImageAsDds(const char *filename, int width, int height, int channels,
-                   const unsigned char *const data);
+int SaveImageAsDds(const std::filesystem::path &filename, int width, int height,
+                   int channels, const std::vector<uint8_t> &data);
 
 /**
         take an image and convert it to DXT1 (no alpha)
 **/
-unsigned char *ConvertImageToDxt1(const unsigned char *const uncompressed,
-                                  int width, int height, int channels,
-                                  int *out_size);
+std::vector<uint8_t> ConvertImageToDxt1(
+    const std::vector<uint8_t> &uncompressed, int width, int height,
+    int channels);
 
 /**
         take an image and convert it to DXT5 (with alpha)
 **/
-unsigned char *ConvertImageToDxt5(const unsigned char *const uncompressed,
-                                  int width, int height, int channels,
-                                  int *out_size);
+std::vector<uint8_t> ConvertImageToDxt5(
+    const std::vector<uint8_t> &uncompressed, int width, int height,
+    int channels);
 
 /**	A bunch of DirectDraw Surface structures and flags **/
 struct DDS_header {

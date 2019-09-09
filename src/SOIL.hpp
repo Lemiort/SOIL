@@ -359,7 +359,8 @@ uint8_t *LoadImageFromMemory(const std::vector<uint8_t> &buffer, int *width,
  * @return int 0 if failed, otherwise returns 1
  */
 bool SaveImage(const std::string &filename, SaveTypes image_type, int width,
-               int height, ImageChannels channels, const uint8_t *const data);
+               int height, ImageChannels channels,
+               const std::vector<uint8_t> &data);
 
 /**
  * @brief  Frees the image data
