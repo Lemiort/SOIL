@@ -13,13 +13,14 @@ class SoilConan(ConanFile):
         "revision": "auto"
     }
     description = "Conan package for Simple Opengl Image Library"
-    topics = ("<Put some tag here>", "<here>", "<and here>")
+    topics = ("OpenGL", "SOIL", "c++")
     settings = "os", "compiler", "build_type", "arch"
     options = {"shared": [True, False]}
     default_options = "shared=False"
     generators = "cmake"
     exports_sources = "src/*", "FindSOILCPP.cmake", "CMakeLists.txt"
-    build_requires = "glew/2.1.0@bincrafters/stable"
+    build_requires = ("glew/2.1.0@bincrafters/stable",
+                      "stb/20190512@conan/stable")
 
     def build(self):
         cmake = CMake(self)

@@ -10,10 +10,12 @@
 #include <math.h>
 #include <stdlib.h>
 
+namespace soil::internal {
+
 /*	Upscaling the image uses simple bilinear interpolation	*/
-int up_scale_image(const unsigned char* const orig, int width, int height,
-                   int channels, unsigned char* resampled, int resampled_width,
-                   int resampled_height) {
+int UpscaleImage(const unsigned char* const orig, int width, int height,
+                 int channels, unsigned char* resampled, int resampled_width,
+                 int resampled_height) {
     float dx, dy;
     int x, y, c;
 
@@ -73,9 +75,9 @@ int up_scale_image(const unsigned char* const orig, int width, int height,
     return 1;
 }
 
-int mipmap_image(const unsigned char* const orig, int width, int height,
-                 int channels, unsigned char* resampled, int block_size_x,
-                 int block_size_y) {
+int MipmapImage(const unsigned char* const orig, int width, int height,
+                int channels, unsigned char* resampled, int block_size_x,
+                int block_size_y) {
     int mip_width, mip_height;
     int i, j, c;
 
@@ -130,8 +132,8 @@ int mipmap_image(const unsigned char* const orig, int width, int height,
     return 1;
 }
 
-int scale_image_RGB_to_NTSC_safe(unsigned char* orig, int width, int height,
-                                 int channels) {
+int ScaleImageRgbToNtscSafe(unsigned char* orig, int width, int height,
+                            int channels) {
     const float scale_lo = 16.0f - 0.499f;
     const float scale_hi = 235.0f + 0.499f;
     int i, j;
@@ -169,8 +171,8 @@ unsigned char clamp_byte(int x) {
         while 4 components will be ordered CoCgAY (for DXT5
         compression).
 */
-int convert_RGB_to_YCoCg(unsigned char* orig, int width, int height,
-                         int channels) {
+int ConvertRgbToYcocg(unsigned char* orig, int width, int height,
+                      int channels) {
     int i;
     /*	error check	*/
     if ((width < 1) || (height < 1) || (channels < 3) || (channels > 4) ||
@@ -217,8 +219,8 @@ int convert_RGB_to_YCoCg(unsigned char* orig, int width, int height,
         This function takes the YCoCg components of the image
         and converts them into RGB.  See above.
 */
-int convert_YCoCg_to_RGB(unsigned char* orig, int width, int height,
-                         int channels) {
+int ConvertYcocgToRgb(unsigned char* orig, int width, int height,
+                      int channels) {
     int i;
     /*	error check	*/
     if ((width < 1) || (height < 1) || (channels < 3) || (channels > 4) ||
@@ -277,8 +279,8 @@ float find_max_RGBE(unsigned char* image, int width, int height) {
     return max_val;
 }
 
-int RGBE_to_RGBdivA(unsigned char* image, int width, int height,
-                    bool rescale_to_max) {
+int RgbeToRgbDivA(unsigned char* image, int width, int height,
+                  bool rescale_to_max) {
     /* local variables */
     int i, iv;
     unsigned char* img = image;
@@ -317,8 +319,8 @@ int RGBE_to_RGBdivA(unsigned char* image, int width, int height,
     return 1;
 }
 
-int RGBE_to_RGBdivA2(unsigned char* image, int width, int height,
-                     bool rescale_to_max) {
+int RgbeToRgbDivA2(unsigned char* image, int width, int height,
+                   bool rescale_to_max) {
     /* local variables */
     int i, iv;
     unsigned char* img = image;
@@ -356,3 +358,5 @@ int RGBE_to_RGBdivA2(unsigned char* image, int width, int height,
     }
     return 1;
 }
+
+}  // namespace soil::internal

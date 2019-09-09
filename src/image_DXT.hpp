@@ -9,64 +9,67 @@
 
 #ifndef HEADER_IMAGE_DXT
 #define HEADER_IMAGE_DXT
+#include <cstdint>
+
+namespace soil::internal {
 
 /**
         Converts an image from an array of unsigned chars (RGB or RGBA) to
         DXT1 or DXT5, then saves the converted image to disk.
         \return 0 if failed, otherwise returns 1
 **/
-int save_image_as_DDS(const char *filename, int width, int height, int channels,
-                      const unsigned char *const data);
+int SaveImageAsDds(const char *filename, int width, int height, int channels,
+                   const unsigned char *const data);
 
 /**
         take an image and convert it to DXT1 (no alpha)
 **/
-unsigned char *convert_image_to_DXT1(const unsigned char *const uncompressed,
-                                     int width, int height, int channels,
-                                     int *out_size);
+unsigned char *ConvertImageToDxt1(const unsigned char *const uncompressed,
+                                  int width, int height, int channels,
+                                  int *out_size);
 
 /**
         take an image and convert it to DXT5 (with alpha)
 **/
-unsigned char *convert_image_to_DXT5(const unsigned char *const uncompressed,
-                                     int width, int height, int channels,
-                                     int *out_size);
+unsigned char *ConvertImageToDxt5(const unsigned char *const uncompressed,
+                                  int width, int height, int channels,
+                                  int *out_size);
 
 /**	A bunch of DirectDraw Surface structures and flags **/
 struct DDS_header {
     struct PixelFormat {
-        unsigned int dwSize;
-        unsigned int dwFlags;
-        unsigned int dwFourCC;
-        unsigned int dwRGBBitCount;
-        unsigned int dwRBitMask;
-        unsigned int dwGBitMask;
-        unsigned int dwBBitMask;
-        unsigned int dwAlphaBitMask;
+        uint32_t dwSize;
+        uint32_t dwFlags;
+        uint32_t dwFourCC;
+        uint32_t dwRGBBitCount;
+        uint32_t dwRBitMask;
+        uint32_t dwGBitMask;
+        uint32_t dwBBitMask;
+        uint32_t dwAlphaBitMask;
     };
     struct Caps {
-        unsigned int dwCaps1;
-        unsigned int dwCaps2;
-        unsigned int dwDDSX;
-        unsigned int dwReserved;
+        uint32_t dwCaps1;
+        uint32_t dwCaps2;
+        uint32_t dwDDSX;
+        uint32_t dwReserved;
     };
 
-    unsigned int dwMagic;
-    unsigned int dwSize;
-    unsigned int dwFlags;
-    unsigned int dwHeight;
-    unsigned int dwWidth;
-    unsigned int dwPitchOrLinearSize;
-    unsigned int dwDepth;
-    unsigned int dwMipMapCount;
-    unsigned int dwReserved1[11];
+    uint32_t dwMagic;
+    uint32_t dwSize;
+    uint32_t dwFlags;
+    uint32_t dwHeight;
+    uint32_t dwWidth;
+    uint32_t dwPitchOrLinearSize;
+    uint32_t dwDepth;
+    uint32_t dwMipMapCount;
+    uint32_t dwReserved1[11];
 
     /*  DDPIXELFORMAT	*/
     PixelFormat sPixelFormat;
 
     /*  DDCAPS2	*/
     Caps sCaps;
-    unsigned int dwReserved2;
+    uint32_t dwReserved2;
 };
 
 /*	the following constants were copied directly off the MSDN website
@@ -106,3 +109,4 @@ struct DDS_header {
 #define DDSCAPS2_VOLUME 0x00200000
 
 #endif /* HEADER_IMAGE_DXT	*/
+}

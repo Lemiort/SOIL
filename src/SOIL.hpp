@@ -177,22 +177,22 @@ std::optional<uint32_t> LoadOglSingleCubemap(const std::string &filename,
                                              uint32_t reuse_texture_ID,
                                              uint32_t flags);
 
-/**
- * @brief Loads an HDR image from disk into an OpenGL texture.
- *
- * @param filename the name of the file to upload as a texture
- * @param fake_HDR_format kRgbe, kRgbDivA, kRgbDivA2
- * @param rescale_to_max
- * @param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the
- * texture ID (overwriting the old texture)
- * @param flags can be any of soil::Flags
- * @return uint32_t 0-failed, otherwise returns the OpenGL texture handle
- */
-std::optional<uint32_t> LoadOglHdrTexture(const std::string &filename,
-                                          HdrTypes fake_HDR_format,
-                                          bool rescale_to_max,
-                                          uint32_t reuse_texture_ID,
-                                          uint32_t flags);
+// /**
+//  * @brief Loads an HDR image from disk into an OpenGL texture.
+//  *
+//  * @param filename the name of the file to upload as a texture
+//  * @param fake_HDR_format kRgbe, kRgbDivA, kRgbDivA2
+//  * @param rescale_to_max
+//  * @param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the
+//  * texture ID (overwriting the old texture)
+//  * @param flags can be any of soil::Flags
+//  * @return uint32_t 0-failed, otherwise returns the OpenGL texture handle
+//  */
+// std::optional<uint32_t> LoadOglHdrTexture(const std::string &filename,
+//                                           HdrTypes fake_HDR_format,
+//                                           bool rescale_to_max,
+//                                           uint32_t reuse_texture_ID,
+//                                           uint32_t flags);
 
 /**
  * @brief Loads an image from RAM into an OpenGL texture.
@@ -214,17 +214,11 @@ std::optional<uint32_t> LoadOglTextureFromMemory(
  * @brief Loads 6 images from memory into an OpenGL cubemap texture.
  *
  * @param x_pos_buffer the image data in RAM to upload as the +x cube face
- * @param x_pos_buffer_length the size of the above buffer
  * @param x_neg_buffer the image data in RAM to upload as the -x cube face
- * @param x_neg_buffer_length the size of the above buffer
  * @param y_pos_buffer the image data in RAM to upload as the +y cube face
- * @param y_pos_buffer_length the size of the above buffer
  * @param y_neg_buffer the image data in RAM to upload as the -y cube face
- * @param y_neg_buffer_length the size of the above buffer
  * @param z_pos_buffer the image data in RAM to upload as the +z cube face
- * @param z_pos_buffer_length the size of the above buffer
  * @param z_neg_buffer the image data in RAM to upload as the -z cube face
- * @param z_neg_buffer_length the size of the above buffer
  * @param force_channels 0-image format, 1-luminous, 2-luminous/alpha, 3-RGB,
  * 4-RGBA
  * @param reuse_texture_ID 0-generate a new texture ID, otherwise reuse the

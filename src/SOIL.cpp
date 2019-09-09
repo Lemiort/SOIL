@@ -22,15 +22,25 @@
 
 #include <GL/glew.h>
 
+#define STB_DEFINE
+#include <stb.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+#define STB_SPRINTF_IMPLEMENTATION
+#include <stb_sprintf.h>
+
 #include "SOIL.hpp"
 #include "image_DXT.hpp"
 #include "image_helper.hpp"
-#include "stb_image_aug.hpp"
 
 #include <stdlib.h>
 #include <string.h>
 
 namespace soil {
+
+using namespace internal;
 
 namespace {
 
@@ -421,7 +431,7 @@ std::optional<uint32_t> DirectLoadDds(const std::string &filename,
     std::ifstream file;
     try {
         file.open(filename, std::ios::ate | std::ios::binary);
-    } catch (std::ifstream::failure e) {
+    } catch (std::ifstream::failure &e) {
         last_result_description = "Can not find DDS file";
         return std::nullopt;
     }
@@ -446,7 +456,6 @@ std::optional<uint32_t> CreateOglTextureInternal(
     uint32_t opengl_texture_target, uint32_t texture_check_size_enum) {
     uint8_t *img;
     std::optional<uint32_t> tex_id;
-    uint32_t internal_texture_format = 0, original_texture_format = 0;
     LoadCapability DXT_mode = LoadCapability::kUnknown;
     int max_supported_size;
     int channels_count = static_cast<int>(channels);
@@ -495,7 +504,7 @@ std::optional<uint32_t> CreateOglTextureInternal(
     }
     //	does the user want me to scale the colors into the NTSC safe RGB range?
     if (flags & Flags::kNtscSafeRgb) {
-        scale_image_RGB_to_NTSC_safe(img, width, height, channels_count);
+        ScaleImageRgbToNtscSafe(img, width, height, channels_count);
     }
     //	does the user want me to convert from straight to pre-multiplied alpha?
     //(and do we even _have_ alpha?)
@@ -551,14 +560,8 @@ std::optional<uint32_t> CreateOglTextureInternal(
             /*	yep, resize	*/
             uint8_t *resampled =
                 (uint8_t *)malloc(channels_count * new_width * new_height);
-            up_scale_image(img, width, height, channels_count, resampled,
-                           new_width, new_height);
-            /*	OJO	this is for debug only!	*/
-            /*
-            SaveImage( "\\showme.bmp", SaveTypes::kBmp,
-                                            new_width, new_height, channels,
-                                            resampled );
-            */
+            UpscaleImage(img, width, height, channels_count, resampled,
+                         new_width, new_height);
             /*	nuke the old guy, then point it at the new guy	*/
             FreeImageData(img);
             img = resampled;
@@ -583,8 +586,8 @@ std::optional<uint32_t> CreateOglTextureInternal(
         new_height = height / reduce_block_y;
         resampled = (uint8_t *)malloc(channels_count * new_width * new_height);
         /*	perform the actual reduction	*/
-        mipmap_image(img, width, height, channels_count, resampled,
-                     reduce_block_x, reduce_block_y);
+        MipmapImage(img, width, height, channels_count, resampled,
+                    reduce_block_x, reduce_block_y);
         /*	nuke the old guy, then point it at the new guy	*/
         FreeImageData(img);
         img = resampled;
@@ -594,9 +597,9 @@ std::optional<uint32_t> CreateOglTextureInternal(
     /*	does the user want us to use YCoCg color space?	*/
     if (flags & Flags::kCoCgY) {
         /*	this will only work with RGB and RGBA images */
-        convert_RGB_to_YCoCg(img, width, height, channels_count);
+        ConvertRgbToYcocg(img, width, height, channels_count);
         /*
-        save_image_as_DDS( "kCoCgY.dds", width, height, channels, img );
+        SaveImageAsDds( "kCoCgY.dds", width, height, channels, img );
         */
     }
     /*	create the OpenGL texture ID handle
@@ -608,8 +611,8 @@ std::optional<uint32_t> CreateOglTextureInternal(
     check_for_GL_errors("glGenTextures");
     /* Note: sometimes glGenTextures fails (usually no OpenGL context)	*/
     if (tex_id) {
-        /*	and what type am I using as the internal texture format?
-         */
+        uint32_t original_texture_format = 0;
+        //	and what type am I using as the internal texture format?
         switch (channels_count) {
             case 1:
                 original_texture_format = GL_LUMINANCE;
@@ -624,7 +627,7 @@ std::optional<uint32_t> CreateOglTextureInternal(
                 original_texture_format = GL_RGBA;
                 break;
         }
-        internal_texture_format = original_texture_format;
+        uint32_t internal_texture_format = original_texture_format;
         /*	does the user want me to, and can I, save as DXT?	*/
         if (flags & Flags::kCompressToDxt) {
             DXT_mode = GetDxtCapability();
@@ -650,12 +653,12 @@ std::optional<uint32_t> CreateOglTextureInternal(
             uint8_t *DDS_data = NULL;
             if ((channels_count & 1) == 1) {
                 /*	RGB, use DXT1	*/
-                DDS_data = convert_image_to_DXT1(img, width, height,
-                                                 channels_count, &DDS_size);
+                DDS_data = ConvertImageToDxt1(img, width, height,
+                                              channels_count, &DDS_size);
             } else {
                 /*	RGBA, use DXT5	*/
-                DDS_data = convert_image_to_DXT5(img, width, height,
-                                                 channels_count, &DDS_size);
+                DDS_data = ConvertImageToDxt5(img, width, height,
+                                              channels_count, &DDS_size);
             }
             if (DDS_data) {
                 glCompressedTexImage2DARB(opengl_texture_target, 0,
@@ -690,8 +693,8 @@ std::optional<uint32_t> CreateOglTextureInternal(
                 (uint8_t *)malloc(channels_count * MIPwidth * MIPheight);
             while (((1 << MIPlevel) <= width) || ((1 << MIPlevel) <= height)) {
                 /*	do this MIPmap level	*/
-                mipmap_image(img, width, height, channels_count, resampled,
-                             (1 << MIPlevel), (1 << MIPlevel));
+                MipmapImage(img, width, height, channels_count, resampled,
+                            (1 << MIPlevel), (1 << MIPlevel));
                 /*  upload the MIPmaps	*/
                 if (DXT_mode == LoadCapability::kPresent) {
                     /*	user wants me to do the DXT conversion!	*/
@@ -699,14 +702,14 @@ std::optional<uint32_t> CreateOglTextureInternal(
                     uint8_t *DDS_data = NULL;
                     if ((channels_count & 1) == 1) {
                         /*	RGB, use DXT1	*/
-                        DDS_data = convert_image_to_DXT1(
-                            resampled, MIPwidth, MIPheight, channels_count,
-                            &DDS_size);
+                        DDS_data =
+                            ConvertImageToDxt1(resampled, MIPwidth, MIPheight,
+                                               channels_count, &DDS_size);
                     } else {
                         /*	RGBA, use DXT5	*/
-                        DDS_data = convert_image_to_DXT5(
-                            resampled, MIPwidth, MIPheight, channels_count,
-                            &DDS_size);
+                        DDS_data =
+                            ConvertImageToDxt5(resampled, MIPwidth, MIPheight,
+                                               channels_count, &DDS_size);
                     }
                     if (DDS_data) {
                         glCompressedTexImage2DARB(
@@ -834,47 +837,49 @@ std::optional<uint32_t> LoadOglTexture(const std::string &filename,
     return tex_id;
 }
 
-std::optional<uint32_t> LoadOglHdrTexture(const std::string &filename,
-                                          HdrTypes fake_HDR_format,
-                                          bool rescale_to_max,
-                                          uint32_t reuse_texture_ID,
-                                          uint32_t flags) {
-    uint8_t *img;
-    int width, height, channels;
-    std::optional<uint32_t> tex_id;
-    // no direct uploading of the image as a DDS file
-    // error check
-    if ((fake_HDR_format != HdrTypes::kRgbe) &&
-        (fake_HDR_format != HdrTypes::kRgbDivA) &&
-        (fake_HDR_format != HdrTypes::kRgbDivA2)) {
-        last_result_description = "Invalid fake HDR format specified";
-        return std::nullopt;
-    }
-    //	try to load the image (only the HDR type)
-    img = stbi_hdr_load_rgbe(filename.c_str(), &width, &height, &channels, 4);
-    //	channels holds the original number of channels, which may have been
-    // forced
-    if (nullptr == img) {
-        //	image loading failed
-        last_result_description = stbi_failure_reason();
-        return std::nullopt;
-    }
-    // the load worked, do I need to convert it?
-    if (fake_HDR_format == HdrTypes::kRgbDivA) {
-        RGBE_to_RGBdivA(img, width, height, rescale_to_max);
-    } else if (fake_HDR_format == HdrTypes::kRgbDivA2) {
-        RGBE_to_RGBdivA2(img, width, height, rescale_to_max);
-    }
-    //	OK, make it a texture!
-    tex_id = CreateOglTextureInternal(img, width, height,
-                                      static_cast<ImageChannels>(channels),
-                                      reuse_texture_ID, flags, GL_TEXTURE_2D,
-                                      GL_TEXTURE_2D, GL_MAX_TEXTURE_SIZE);
-    //	and nuke the image data
-    FreeImageData(img);
-    //	and return the handle, such as it is
-    return tex_id;
-}
+// std::optional<uint32_t> LoadOglHdrTexture(const std::string &filename,
+//                                           HdrTypes fake_HDR_format,
+//                                           bool rescale_to_max,
+//                                           uint32_t reuse_texture_ID,
+//                                           uint32_t flags) {
+//     uint8_t *img;
+//     int width, height, channels;
+//     std::optional<uint32_t> tex_id;
+//     // no direct uploading of the image as a DDS file
+//     // error check
+//     if ((fake_HDR_format != HdrTypes::kRgbe) &&
+//         (fake_HDR_format != HdrTypes::kRgbDivA) &&
+//         (fake_HDR_format != HdrTypes::kRgbDivA2)) {
+//         last_result_description = "Invalid fake HDR format specified";
+//         return std::nullopt;
+//     }
+//     //	try to load the image (only the HDR type)
+//     img = stbi_hdr_load_rgbe(filename.c_str(), &width, &height,
+//     &channels, 4);
+//     //	channels holds the original number of channels, which may have
+//     // been
+//     // forced
+//     if (nullptr == img) {
+//         //	image loading failed
+//         last_result_description = stbi_failure_reason();
+//         return std::nullopt;
+//     }
+//     // the load worked, do I need to convert it?
+//     if (fake_HDR_format == HdrTypes::kRgbDivA) {
+//         RgbeToRgbDivA(img, width, height, rescale_to_max);
+//     } else if (fake_HDR_format == HdrTypes::kRgbDivA2) {
+//         RgbeToRgbDivA2(img, width, height, rescale_to_max);
+//     }
+//     //	OK, make it a texture!
+//     tex_id = CreateOglTextureInternal(img, width, height,
+//                                       static_cast<ImageChannels>(channels),
+//                                       reuse_texture_ID, flags, GL_TEXTURE_2D,
+//                                       GL_TEXTURE_2D, GL_MAX_TEXTURE_SIZE);
+//     //	and nuke the image data
+//     FreeImageData(img);
+//     //	and return the handle, such as it is
+//     return tex_id;
+// }
 
 std::optional<uint32_t> LoadOglTextureFromMemory(
     const std::vector<uint8_t> &buffer, ImageChannels force_channels,
@@ -1037,7 +1042,7 @@ std::optional<uint32_t> LoadOglSingleCubemap(const std::string &filename,
                                              uint32_t flags) {
     constexpr char avaliable_chars[] = {'N', 'S', 'W', 'E', 'U', 'D'};
     uint8_t *img;
-    int width, height, i;
+    int width, height;
     ImageChannels channels;
     std::optional<uint32_t> tex_id = std::nullopt;
     //	error checking
@@ -1344,9 +1349,9 @@ bool SaveImage(const std::string &filename, SaveTypes image_type, int width,
         save_result = stbi_write_tga(filename.c_str(), width, height,
                                      static_cast<int>(channels), (void *)data);
     } else if (image_type == SaveTypes::kDds) {
-        save_result = save_image_as_DDS(filename.c_str(), width, height,
-                                        static_cast<int>(channels),
-                                        (const uint8_t *const)data);
+        save_result = SaveImageAsDds(filename.c_str(), width, height,
+                                     static_cast<int>(channels),
+                                     (const uint8_t *const)data);
     } else {
         save_result = false;
     }

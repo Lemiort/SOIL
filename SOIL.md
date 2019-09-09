@@ -192,7 +192,7 @@ FreeImageData( ht_map );
     added Flags::kCoCgY, will convert RGB or RGBA to YCoCg color space ([link](http://developer.nvidia.com/object/real-time-ycocg-dxt-compression.html))
 - October 5, 2007
     added Flags::kNtscSafeRgb
-    bugfixed & optimized up_scale_image (used with Flags::kPowerOfTwo and Flags::kMipMaps)
+    bugfixed & optimized UpscaleImage (used with Flags::kPowerOfTwo and Flags::kMipMaps)
 - September 20, 2007
     upgraded to stb_image 1.0
     added the DXT source files to the MSVS projects

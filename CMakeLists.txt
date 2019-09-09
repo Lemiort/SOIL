@@ -5,6 +5,10 @@ project(${PROJECT_NAME} CXX)
 
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 
+# include(build/conanbuildinfo.cmake)
+
+# conan_basic_setup()
+
 if (EXISTS ${CMAKE_CURRENT_BINARY_DIR}/conanbuildinfo.cmake)
   include(${CMAKE_CURRENT_BINARY_DIR}/conanbuildinfo.cmake)
   conan_basic_setup()
@@ -28,15 +32,10 @@ else()
   )
 endif()
 
-find_package("GLEW")
-if(GLEW_FOUND)
-    message("GLEW was found")
-else()
-    message(FATAL_ERROR "GLEW not found")
-endif()
 
-include_directories(${GLEW_INCLUDE_DIR})
-include_directories(src)
+include_directories(${CONAN_INCLUDE_DIRS})
+# include_directories(src)
+
 file(GLOB_RECURSE SOURCES_LIST "src/*.cpp")
 
 add_library(${PROJECT_NAME} ${SOURCES_LIST})

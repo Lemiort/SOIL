@@ -13,6 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+namespace soil::internal {
+
 /*	set this =1 if you want to use the covarince matrix method...
         which is better than my method of using standard deviations
         overall, except on the infintesimal chance that the power
@@ -25,20 +27,20 @@
         in DXT1 format (color only, no alpha).  Speed is valued
         over prettyness, at least for now.
 */
-void compress_DDS_color_block(int channels,
-                              const unsigned char *const uncompressed,
-                              unsigned char compressed[8]);
+void CompressDdsColorBlock(int channels,
+                           const unsigned char *const uncompressed,
+                           unsigned char compressed[8]);
 /*
         Takes a 4x4 block of pixels and compresses the alpha
         component it into 8 bytes for use in DXT5 DDS files.
         Speed is valued over prettyness, at least for now.
 */
-void compress_DDS_alpha_block(const unsigned char *const uncompressed,
-                              unsigned char compressed[8]);
+void CompressDdsAlphaBlock(const unsigned char *const uncompressed,
+                           unsigned char compressed[8]);
 
 /********* Actual Exposed Functions *********/
-int save_image_as_DDS(const char *filename, int width, int height, int channels,
-                      const unsigned char *const data) {
+int SaveImageAsDds(const char *filename, int width, int height, int channels,
+                   const unsigned char *const data) {
     /*	variables	*/
     FILE *fout;
     unsigned char *DDS_data;
@@ -52,12 +54,10 @@ int save_image_as_DDS(const char *filename, int width, int height, int channels,
     /*	Convert the image	*/
     if ((channels & 1) == 1) {
         /*	no alpha, just use DXT1	*/
-        DDS_data =
-            convert_image_to_DXT1(data, width, height, channels, &DDS_size);
+        DDS_data = ConvertImageToDxt1(data, width, height, channels, &DDS_size);
     } else {
         /*	has alpha, so use DXT5	*/
-        DDS_data =
-            convert_image_to_DXT5(data, width, height, channels, &DDS_size);
+        DDS_data = ConvertImageToDxt5(data, width, height, channels, &DDS_size);
     }
     /*	save it	*/
     memset(&header, 0, sizeof(DDS_header));
@@ -88,9 +88,9 @@ int save_image_as_DDS(const char *filename, int width, int height, int channels,
     return 1;
 }
 
-unsigned char *convert_image_to_DXT1(const unsigned char *const uncompressed,
-                                     int width, int height, int channels,
-                                     int *out_size) {
+unsigned char *ConvertImageToDxt1(const unsigned char *const uncompressed,
+                                  int width, int height, int channels,
+                                  int *out_size) {
     unsigned char *compressed;
     int i, j, x, y;
     unsigned char ublock[16 * 3];
@@ -149,7 +149,7 @@ unsigned char *convert_image_to_DXT1(const unsigned char *const uncompressed,
             }
             /*	compress the block	*/
             ++block_count;
-            compress_DDS_color_block(3, ublock, cblock);
+            CompressDdsColorBlock(3, ublock, cblock);
             /*	copy the data from the block into the main block	*/
             for (x = 0; x < 8; ++x) {
                 compressed[index++] = cblock[x];
@@ -159,9 +159,9 @@ unsigned char *convert_image_to_DXT1(const unsigned char *const uncompressed,
     return compressed;
 }
 
-unsigned char *convert_image_to_DXT5(const unsigned char *const uncompressed,
-                                     int width, int height, int channels,
-                                     int *out_size) {
+unsigned char *ConvertImageToDxt5(const unsigned char *const uncompressed,
+                                  int width, int height, int channels,
+                                  int *out_size) {
     unsigned char *compressed;
     int i, j, x, y;
     unsigned char ublock[16 * 4];
@@ -228,7 +228,7 @@ unsigned char *convert_image_to_DXT5(const unsigned char *const uncompressed,
                 }
             }
             /*	now compress the alpha block	*/
-            compress_DDS_alpha_block(ublock, cblock);
+            CompressDdsAlphaBlock(ublock, cblock);
             /*	copy the data from the compressed alpha block into the main
              * buffer	*/
             for (x = 0; x < 8; ++x) {
@@ -236,7 +236,7 @@ unsigned char *convert_image_to_DXT5(const unsigned char *const uncompressed,
             }
             /*	then compress the color block	*/
             ++block_count;
-            compress_DDS_color_block(4, ublock, cblock);
+            CompressDdsColorBlock(4, ublock, cblock);
             /*	copy the data from the compressed color block into the main
              * buffer	*/
             for (x = 0; x < 8; ++x) {
@@ -248,26 +248,24 @@ unsigned char *convert_image_to_DXT5(const unsigned char *const uncompressed,
 }
 
 /********* Helper Functions *********/
-int convert_bit_range(int c, int from_bits, int to_bits) {
+int ConvertBitRange(int c, int from_bits, int to_bits) {
     int b = (1 << (from_bits - 1)) + c * ((1 << to_bits) - 1);
     return (b + (b >> from_bits)) >> from_bits;
 }
 
-int rgb_to_565(int r, int g, int b) {
-    return (convert_bit_range(r, 8, 5) << 11) |
-           (convert_bit_range(g, 8, 6) << 05) |
-           (convert_bit_range(b, 8, 5) << 00);
+int RgbTo565(int r, int g, int b) {
+    return (ConvertBitRange(r, 8, 5) << 11) | (ConvertBitRange(g, 8, 6) << 05) |
+           (ConvertBitRange(b, 8, 5) << 00);
 }
 
-void rgb_888_from_565(unsigned int c, int *r, int *g, int *b) {
-    *r = convert_bit_range((c >> 11) & 31, 5, 8);
-    *g = convert_bit_range((c >> 05) & 63, 6, 8);
-    *b = convert_bit_range((c >> 00) & 31, 5, 8);
+void Rgb888From565(unsigned int c, int *r, int *g, int *b) {
+    *r = ConvertBitRange((c >> 11) & 31, 5, 8);
+    *g = ConvertBitRange((c >> 05) & 63, 6, 8);
+    *b = ConvertBitRange((c >> 00) & 31, 5, 8);
 }
 
-void compute_color_line_STDEV(const unsigned char *const uncompressed,
-                              int channels, float point[3],
-                              float direction[3]) {
+void ComputeColorLineStdev(const unsigned char *const uncompressed,
+                           int channels, float point[3], float direction[3]) {
     const float inv_16 = 1.0f / 16.0f;
     int i;
     float sum_r = 0.0f, sum_g = 0.0f, sum_b = 0.0f;
@@ -369,8 +367,8 @@ void compute_color_line_STDEV(const unsigned char *const uncompressed,
 #endif
 }
 
-void LSE_master_colors_max_min(int *cmax, int *cmin, int channels,
-                               const unsigned char *const uncompressed) {
+void LseMasterColorsMaxMin(int *cmax, int *cmin, int channels,
+                           const unsigned char *const uncompressed) {
     int i, j;
     /*	the master colors	*/
     int c0[3], c1[3];
@@ -384,7 +382,7 @@ void LSE_master_colors_max_min(int *cmax, int *cmin, int channels,
     if ((channels < 3) || (channels > 4)) {
         return;
     }
-    compute_color_line_STDEV(uncompressed, channels, sum_x, sum_x2);
+    ComputeColorLineStdev(uncompressed, channels, sum_x, sum_x2);
     vec_len2 = 1.0f / (0.00001f + sum_x2[0] * sum_x2[0] +
                        sum_x2[1] * sum_x2[1] + sum_x2[2] * sum_x2[2]);
     /*	finding the max and min vector values	*/
@@ -426,8 +424,8 @@ void LSE_master_colors_max_min(int *cmax, int *cmin, int channels,
         }
     }
     /*	down_sample (with rounding?)	*/
-    i = rgb_to_565(c0[0], c0[1], c0[2]);
-    j = rgb_to_565(c1[0], c1[1], c1[2]);
+    i = RgbTo565(c0[0], c0[1], c0[2]);
+    j = RgbTo565(c1[0], c1[1], c1[2]);
     if (i > j) {
         *cmax = i;
         *cmin = j;
@@ -437,9 +435,9 @@ void LSE_master_colors_max_min(int *cmax, int *cmin, int channels,
     }
 }
 
-void compress_DDS_color_block(int channels,
-                              const unsigned char *const uncompressed,
-                              unsigned char compressed[8]) {
+void CompressDdsColorBlock(int channels,
+                           const unsigned char *const uncompressed,
+                           unsigned char compressed[8]) {
     /*	variables	*/
     int i;
     int next_bit;
@@ -450,7 +448,7 @@ void compress_DDS_color_block(int channels,
     /*	stupid order	*/
     int swizzle4[] = {0, 2, 3, 1};
     /*	get the master colors	*/
-    LSE_master_colors_max_min(&enc_c0, &enc_c1, channels, uncompressed);
+    LseMasterColorsMaxMin(&enc_c0, &enc_c1, channels, uncompressed);
     /*	store the 565 color 0 and color 1	*/
     compressed[0] = (enc_c0 >> 0) & 255;
     compressed[1] = (enc_c0 >> 8) & 255;
@@ -462,8 +460,8 @@ void compress_DDS_color_block(int channels,
     compressed[6] = 0;
     compressed[7] = 0;
     /*	reconstitute the master color vectors	*/
-    rgb_888_from_565(enc_c0, &c0[0], &c0[1], &c0[2]);
-    rgb_888_from_565(enc_c1, &c1[0], &c1[1], &c1[2]);
+    Rgb888From565(enc_c0, &c0[0], &c0[1], &c0[2]);
+    Rgb888From565(enc_c1, &c1[0], &c1[1], &c1[2]);
     /*	the new vector	*/
     vec_len2 = 0.0f;
     for (i = 0; i < 3; ++i) {
@@ -504,8 +502,8 @@ void compress_DDS_color_block(int channels,
     /*	done compressing to DXT1	*/
 }
 
-void compress_DDS_alpha_block(const unsigned char *const uncompressed,
-                              unsigned char compressed[8]) {
+void CompressDdsAlphaBlock(const unsigned char *const uncompressed,
+                           unsigned char compressed[8]) {
     /*	variables	*/
     int i;
     int next_bit;
@@ -550,3 +548,5 @@ void compress_DDS_alpha_block(const unsigned char *const uncompressed,
     }
     /*	done compressing to DXT1	*/
 }
+
+}  // namespace soil::internal
