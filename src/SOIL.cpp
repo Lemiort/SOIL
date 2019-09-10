@@ -504,7 +504,7 @@ std::optional<uint32_t> CreateOglTextureInternal(
     }
     //	does the user want me to scale the colors into the NTSC safe RGB range?
     if (flags & Flags::kNtscSafeRgb) {
-        ScaleImageRgbToNtscSafe(img.data(), width, height, channels_count);
+        ScaleImageRgbToNtscSafe(img, width, height, channels_count);
     }
     //	does the user want me to convert from straight to pre-multiplied alpha?
     //(and do we even _have_ alpha?)
